@@ -2,7 +2,6 @@
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
 
-export const STORE_WIDTH = 10
 export const STORE_HEIGHT = 3
 export const FRONT_Z = -5.2
 export const BACK_Z = 4
@@ -18,6 +17,17 @@ export const SHELF_DEPTH = 0.4
 // Distance from a node to the front of the shelf it looks at
 export const VIEW_DISTANCE = 1.8
 
+// Standing spots form a grid with the same gap between neighbours in both
+// directions. Front to back, two spots are separated by VIEW_DISTANCE, a
+// double-sided unit and VIEW_DISTANCE again, with the centre spot halfway,
+// so one gap is VIEW_DISTANCE plus one shelf depth.
+export const NODE_SPACING = VIEW_DISTANCE + SHELF_DEPTH
+
+const WALL_INNER = 0.1
+// Wide enough that the side shelves sit VIEW_DISTANCE from the corner spots
+export const STORE_WIDTH =
+  2 * (NODE_SPACING + VIEW_DISTANCE + SHELF_DEPTH + WALL_INNER)
+
 // Facing: 0 = +z (towards the back wall), 1 = +x, 2 = -z (towards the front), 3 = -x
 export type Facing = 0 | 1 | 2 | 3
 
@@ -28,13 +38,12 @@ export const FACING_VECTORS: Record<Facing, [number, number]> = {
   3: [-1, 0],
 }
 
-const WALL_INNER = 0.1
 const backRowZ = BACK_Z - WALL_INNER - SHELF_DEPTH / 2
 // Standing spots in front of the back wall shelves
 const backNodeZ = backRowZ - SHELF_DEPTH / 2 - VIEW_DISTANCE
-const sideWallX = STORE_WIDTH / 2 - WALL_INNER - SHELF_DEPTH / 2
 // Corner spots sit VIEW_DISTANCE from both the back shelf and the side shelf
-const cornerX = sideWallX - SHELF_DEPTH / 2 - VIEW_DISTANCE
+const cornerX = NODE_SPACING
+const sideWallX = cornerX + VIEW_DISTANCE + SHELF_DEPTH / 2
 
 // Shelves F and G stand opposite B and D, facing them across the corner
 // spots; H and I stand back to back with them, facing the store front
@@ -110,14 +119,16 @@ export interface NavNode {
   z: number
 }
 
-// A 3x2 grid: the corner spots see a back shelf ahead, a side shelf to the
-// side and F or G behind; the middle back spot sees shelf C; the outer front
-// spots see H or I ahead and the counter or drop bin behind. The shelf units
-// block the outer columns, so the rows connect through the middle.
+// A 3x3 grid, NODE_SPACING apart, with only the middle of the centre row
+// used: the corner spots see a back shelf ahead, a side shelf to the side and
+// F or G behind; the middle back spot sees shelf C; the outer front spots see
+// H or I ahead and the counter or drop bin behind. The shelf units block the
+// outer columns, so the rows connect through the centre spot.
 export const NODES: NavNode[] = [
   { id: 'counter', x: -cornerX, z: frontNodeZ },
   { id: 'entrance', x: 0, z: frontNodeZ },
   { id: 'dropBin', x: cornerX, z: frontNodeZ },
+  { id: 'centre', x: 0, z: frontNodeZ + NODE_SPACING },
   { id: 'cornerLeft', x: -cornerX, z: backNodeZ },
   { id: 'back', x: 0, z: backNodeZ },
   { id: 'cornerRight', x: cornerX, z: backNodeZ },
