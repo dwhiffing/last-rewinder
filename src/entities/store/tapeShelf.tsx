@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { CanvasTexture, SRGBColorSpace } from 'three'
 import { GENRE_COLORS, tapeById } from '../../data/tapes'
 import {
   SHELF_DEPTH,
@@ -28,6 +29,37 @@ const slotPosition = (tier: number, slot: number): [number, number, number] => [
   SHELF_DEPTH / 2 - TAPE_SIZE[2] / 2 - 0.01,
 ]
 
+// Spine art: the title running bottom-to-top on the genre color. One texture
+// per tape, made on first use and kept for the whole game.
+const spineTextures = new Map<string, CanvasTexture>()
+function spineTexture(tapeId: string) {
+  const cached = spineTextures.get(tapeId)
+  if (cached) return cached
+  const tape = tapeById(tapeId)
+  const canvas = document.createElement('canvas')
+  canvas.width = 96
+  canvas.height = 200
+  const g = canvas.getContext('2d')!
+  g.fillStyle = GENRE_COLORS[tape.genre]
+  g.fillRect(0, 0, canvas.width, canvas.height)
+  // light label band behind the title so it reads on any genre color
+  g.fillStyle = '#f4efe2'
+  g.fillRect(12, 6, canvas.width - 24, canvas.height - 12)
+  g.translate(canvas.width / 2, canvas.height / 2)
+  g.rotate(-Math.PI / 2)
+  g.fillStyle = '#111'
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  const words = tape.title.toUpperCase()
+  const size = words.length > 16 ? 26 : 32
+  g.font = `bold ${size}px sans-serif`
+  g.fillText(words, 0, 0, canvas.height - 20)
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  tex.anisotropy = 4
+  spineTextures.set(tapeId, tex)
+  return tex
+}
 
 // One slot: either a tape you can pick up or an empty space you can fill
 const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; slot: number }) {
@@ -54,7 +86,14 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
       castShadow
       position={position}>
       <boxGeometry args={TAPE_SIZE} />
-      <meshStandardMaterial color={GENRE_COLORS[tape.genre]} roughness={0.6} />
+      {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z */}
+      {[0, 1, 2, 3, 4, 5].map((face) =>
+        face === 4 ? (
+          <meshStandardMaterial key={face} attach={`material-${face}`} map={spineTexture(tapeId)} roughness={0.6} />
+        ) : (
+          <meshStandardMaterial key={face} attach={`material-${face}`} color={GENRE_COLORS[tape.genre]} roughness={0.6} />
+        ),
+      )}
     </mesh>
   )
 })
