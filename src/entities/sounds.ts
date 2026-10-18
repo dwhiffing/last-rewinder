@@ -77,3 +77,39 @@ export function playGameStart() {
 export function playInteract() {
   playTone(1200, ctx.currentTime, 0.08, 0.15)
 }
+
+function playBuzz(freq: number, start: number, dur: number, peak = 0.12) {
+  const osc = ctx.createOscillator()
+  osc.type = 'square'
+  osc.frequency.value = freq
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(peak, start)
+  gain.gain.setValueAtTime(peak, start + dur - 0.02)
+  gain.gain.linearRampToValueAtTime(0, start + dur)
+  osc.connect(gain)
+  gain.connect(sfxMaster)
+  osc.start(start)
+  osc.stop(start + dur)
+}
+
+// Placeholder: low double buzz when a tape doesn't fit an order
+export function playError() {
+  const now = ctx.currentTime
+  playBuzz(110, now, 0.12)
+  playBuzz(98, now + 0.15, 0.18)
+}
+
+// Placeholder: rising arpeggio when an order is filled
+export function playCash() {
+  const now = ctx.currentTime
+  playTone(1046, now, 0.15, 0.2)
+  playTone(1318, now + 0.07, 0.15, 0.2)
+  playTone(1568, now + 0.14, 0.35, 0.2)
+}
+
+// Placeholder: computer beep when a new order arrives
+export function playOrderIn() {
+  const now = ctx.currentTime
+  playTone(1500, now, 0.07, 0.12)
+  playTone(1500, now + 0.12, 0.07, 0.12)
+}

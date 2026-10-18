@@ -4,7 +4,7 @@ import { Mesh } from '../../shared/traits'
 import useGameStore from '../../stores/gameStore'
 import { setMusicMuted } from '../ambience'
 import { playInteract, resumeAudioContext, setSfxMuted, tickFootstep } from '../sounds'
-import { isBusy, step, turn } from './nav'
+import { isBusy, nav, step, turn } from './nav'
 import { Controllable, NearestItem } from './traits'
 
 const _raycaster = new Raycaster()
@@ -15,7 +15,7 @@ export const INTERACT_REACH = 3.5
 
 // Object names that can be pointed at and interacted with. Each such object
 // carries a human readable `userData.label`.
-export const INTERACTABLE_NAMES = ['tape', 'slot', 'shelf', 'counter', 'dropBin']
+export const INTERACTABLE_NAMES = ['tape', 'slot', 'shelf', 'counter', 'computer', 'dropBin']
 
 export const isTouchDevice =
   typeof window !== 'undefined' &&
@@ -55,7 +55,7 @@ function setPointer(clientX: number, clientY: number) {
 }
 
 function isUi(target: EventTarget | null) {
-  return !!(target as HTMLElement | null)?.closest?.('button, a, .menu')
+  return !!(target as HTMLElement | null)?.closest?.('button, a, .menu, .computer, .tape-card')
 }
 
 function initInputListeners() {
@@ -82,9 +82,14 @@ function initInputListeners() {
   })
 }
 
-export const controllerInputSystem = (world: World, _delta: number) => {
+export const controllerInputSystem = (world: World, delta: number) => {
   initInputListeners()
   const now = performance.now()
+  const store = useGameStore.getState()
+
+  if (store.scene === 'game') store.tick(Math.min(delta, 0.5))
+  if (justPressed.has('f') && store.carried.length) store.flipCover()
+  if (justPressed.has('escape') && store.computerOpen) store.setComputerOpen(false)
 
   if (justPressed.has('m')) {
     useGameStore.getState().cycleSoundMode()
@@ -128,14 +133,19 @@ function runAction(action: NavAction, now: number) {
     case 'back':
     case 'left': {
       const relative = { forward: 0, right: 1, back: 2, left: 3 }[action] as 0 | 1 | 2 | 3
-      if (step(relative, now)) tickFootstep(true, now)
+      if (step(relative, now)) {
+        tickFootstep(true, now)
+        useGameStore.getState().setComputerOpen(false)
+      }
       break
     }
     case 'turnLeft':
       turn(-1, now)
+      useGameStore.getState().setComputerOpen(false)
       break
     case 'turnRight':
       turn(1, now)
+      useGameStore.getState().setComputerOpen(false)
       break
   }
 }
@@ -151,8 +161,15 @@ function interact(mesh: any) {
     const before = store.carried.length
     store.putDown(slotId)
     if (useGameStore.getState().carried.length < before) playInteract()
-  } else if (mesh.name !== 'shelf') {
-    // Counter and drop bin do nothing yet
+  } else if (mesh.name === 'computer') {
+    if (nav.node.id !== 'counter') {
+      store.showMessage('Walk behind the counter to use the computer')
+      return
+    }
+    playInteract()
+    store.setComputerOpen(true)
+  } else if (mesh.name !== 'shelf' && mesh.name !== 'counter') {
+    // The drop bin does nothing yet
     store.showMessage(`${label ?? mesh.name}: nothing to do here yet`)
   }
 }

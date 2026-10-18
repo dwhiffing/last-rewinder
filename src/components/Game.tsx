@@ -10,7 +10,8 @@ import {
 } from '../entities/controller/system'
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
-import { GENRE_COLORS, tapeById } from '../data/tapes'
+import { type Order } from '../data/orders'
+import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
 import useGameStore, { MAX_CARRIED, type SoundMode } from '../stores/gameStore'
 
 function MountScheduler() {
@@ -91,6 +92,7 @@ function SoundModeToast() {
 
 function actionHint(kind: string, carried: string[]) {
   const verb = isTouchDevice ? 'Tap' : 'Click'
+  if (kind === 'computer') return `${verb} to check orders`
   if (kind === 'tape')
     return carried.length >= MAX_CARRIED ? 'Hands full' : `${verb} to pick up`
   if (kind === 'slot') {
@@ -181,11 +183,160 @@ function NavButtons() {
   )
 }
 
+// Re-render a few times a second for countdowns, not every frame
+const useClock = () => useGameStore((s) => Math.floor(s.time * 4) / 4)
+
+const formatTime = (seconds: number) => {
+  const s = Math.max(0, Math.ceil(seconds))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+function MoneyHud() {
+  const money = useGameStore((s) => s.money)
+  const orders = useGameStore((s) => s.orders)
+  const time = useClock()
+  const soonest = orders.reduce((min, o) => Math.min(min, o.expiresAt), Infinity)
+  const left = soonest - time
+  return (
+    <div className="money-hud">
+      <div className="money">${money}</div>
+      <div className={`orders-count ${left < 15 ? 'urgent' : ''}`}>
+        {orders.length
+          ? `${orders.length} order${orders.length > 1 ? 's' : ''} \u00b7 next due ${formatTime(left)}`
+          : 'No orders yet'}
+      </div>
+    </div>
+  )
+}
+
+const KIND_LABELS: Record<Order['kind'], string> = {
+  title: 'Title',
+  requirements: 'Request',
+  clue: 'Clue',
+}
+
+function OrderCard({ order, time }: { order: Order; time: number }) {
+  const handIn = useGameStore((s) => s.handIn)
+  const total = order.expiresAt - order.createdAt
+  const left = order.expiresAt - time
+  const done = order.items.filter((i) => i.filled).length
+  return (
+    <button className={`order-card kind-${order.kind}`} onClick={() => handIn(order.id)}>
+      <div className="order-head">
+        <span className="order-kind">{KIND_LABELS[order.kind]}</span>
+        <span className="order-reward">${order.reward}</span>
+      </div>
+      <div className="order-text">{order.text}</div>
+      {order.tags.length > 0 && (
+        <div className="order-tags">
+          {order.tags.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </div>
+      )}
+      {order.items.length > 1 && (
+        <div className="order-progress">
+          {done}/{order.items.length} tapes handed in
+        </div>
+      )}
+      <div className="order-timer">
+        <div
+          className={left < 15 ? 'urgent' : ''}
+          style={{ width: `${Math.max(0, (left / total) * 100)}%` }}
+        />
+      </div>
+      <div className="order-time">{formatTime(left)} left</div>
+    </button>
+  )
+}
+
+// The counter computer: lists open orders. Clicking one hands in the top tape.
+function OrdersScreen() {
+  const open = useGameStore((s) => s.computerOpen)
+  const orders = useGameStore((s) => s.orders)
+  const top = useGameStore((s) => s.carried[s.carried.length - 1])
+  const close = useGameStore((s) => s.setComputerOpen)
+  const time = useClock()
+  if (!open) return null
+  return (
+    <div className="computer" onPointerDown={(e) => e.target === e.currentTarget && close(false)}>
+      <div className="computer-screen">
+        <div className="computer-title">
+          <span>VIDEO-NET ORDERS</span>
+          <button className="computer-close" onClick={() => close(false)} aria-label="Close">
+            {'\u2715'}
+          </button>
+        </div>
+        <div className="computer-hint">
+          {top
+            ? `Click an order to hand in ${tapeById(top).title}`
+            : 'Pick up a tape, then click an order to hand it in'}
+        </div>
+        <div className="order-list">
+          {orders.length === 0 && <div className="no-orders">Waiting for orders...</div>}
+          {orders.map((o) => (
+            <OrderCard key={o.id} order={o} time={time} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Box art for the top tape in your hands. Click (or F) to flip it over.
+function TapeCard() {
+  const top = useGameStore((s) => s.carried[s.carried.length - 1])
+  const flipped = useGameStore((s) => s.coverFlipped)
+  const flip = useGameStore((s) => s.flipCover)
+  if (!top) return null
+  const tape = tapeById(top)
+  return (
+    <div className="tape-card" onPointerDown={() => flip()} title="Flip (F)">
+      <div className={`tape-card-inner ${flipped ? 'flipped' : ''}`}>
+        <div className="tape-front" style={{ background: GENRE_COLORS[tape.genre] }}>
+          <div className="tape-actors">{tape.actors.join(' \u00b7 ')}</div>
+          <div className="tape-title">{tape.title}</div>
+          <div className="tape-front-foot">
+            <span className="tape-rating" style={{ background: RATING_COLORS[tape.rating] }}>
+              {tape.rating}
+            </span>
+            <span className="tape-year">{tape.year}</span>
+          </div>
+        </div>
+        <div className="tape-back">
+          <div className="tape-back-title">{tape.title}</div>
+          <p className="tape-bio">{tape.bio}</p>
+          <dl className="tape-stats">
+            <dt>Genre</dt>
+            <dd>{tape.genre}</dd>
+            <dt>Rated</dt>
+            <dd>{tape.rating}</dd>
+            <dt>Released</dt>
+            <dd>
+              {tape.year} ({tape.decade})
+            </dd>
+            <dt>Runtime</dt>
+            <dd>
+              {tape.minutes} min ({lengthOf(tape.minutes)})
+            </dd>
+            <dt>Starring</dt>
+            <dd>{tape.actors.join(', ')}</dd>
+          </dl>
+        </div>
+      </div>
+      <div className="tape-card-hint">{flipped ? 'Back' : 'Front'}{' \u00b7 click or F to flip'}</div>
+    </div>
+  )
+}
+
 function Hud() {
   return (
     <>
       <LookPrompt />
       <CarriedStack />
+      <MoneyHud />
+      <TapeCard />
+      <OrdersScreen />
       <NavButtons />
       <div className="ui">
         <SoundModeToast />

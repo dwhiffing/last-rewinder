@@ -18,6 +18,7 @@ import Block from '../entities/store/block'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
+import useGameStore from '../stores/gameStore'
 
 const WALL = 0.2
 const halfW = STORE_WIDTH / 2
@@ -91,9 +92,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
           position={[cx, COUNTER_SIZE[1] + 0.02, cz]}
           color="#ffd400"
         />
-        {/* placeholder register */}
-        <Block size={[0.4, 0.25, 0.3]} position={[cx + 0.6, COUNTER_SIZE[1] + 0.17, cz]} color="#222" />
       </group>
+      <Computer position={[cx + 0.45, COUNTER_SIZE[1] + 0.045, cz]} />
       <Label
         text="CHECKOUT"
         position={[cx, 1.5, cz - 0.1]}
@@ -146,3 +146,26 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 }
 
 export default Store
+
+// Placeholder CRT on the counter where orders come in. Its screen shows how
+// many orders are waiting.
+function Computer({ position }: { position: [number, number, number] }) {
+  const count = useGameStore((s) => s.orders.length)
+  const [x, y, z] = position
+  return (
+    <group name="computer" userData={{ label: 'Order computer' }}>
+      <Block size={[0.3, 0.04, 0.25]} position={[x, y, z - 0.08]} color="#bbb" />
+      <Block size={[0.46, 0.38, 0.4]} position={[x, y + 0.21, z - 0.08]} color="#d9d4c3" />
+      <Label
+        text={count ? `${count} ORDER${count > 1 ? 'S' : ''}` : 'NO ORDERS'}
+        position={[x, y + 0.22, z + 0.125]}
+        width={0.36}
+        height={0.27}
+        background={count ? '#0b3d0b' : '#082008'}
+        color="#4cff4c"
+      />
+      {/* keyboard */}
+      <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + 0.18]} color="#cfc9b8" />
+    </group>
+  )
+}
