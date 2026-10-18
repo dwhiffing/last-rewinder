@@ -37,8 +37,12 @@ const sideWallX = STORE_WIDTH / 2 - WALL_INNER - SHELF_DEPTH / 2
 // Corner spots sit VIEW_DISTANCE from both the back shelf and the side shelf
 const cornerX = sideWallX - SHELF_DEPTH / 2 - VIEW_DISTANCE
 
-// Three shelves against the back wall, plus one on each side wall by the
-// back corners. Rotation turns each shelf's front (local +z) into the room.
+// Shelves F and G stand opposite B and D, facing them across the corner spots
+const facingRowZ = backNodeZ - VIEW_DISTANCE - SHELF_DEPTH / 2
+
+// Three shelves against the back wall, one on each side wall by the back
+// corners, and two freestanding ones facing back towards B and D.
+// Rotation turns each shelf's front (local +z) into the room.
 export const SHELVES: {
   id: string
   position: [number, number, number]
@@ -49,7 +53,30 @@ export const SHELVES: {
   { id: 'C', position: [0, 0, backRowZ], rotationY: Math.PI },
   { id: 'D', position: [cornerX, 0, backRowZ], rotationY: Math.PI },
   { id: 'E', position: [sideWallX, 0, backNodeZ], rotationY: -Math.PI / 2 },
+  { id: 'F', position: [-cornerX, 0, facingRowZ], rotationY: 0 },
+  { id: 'G', position: [cornerX, 0, facingRowZ], rotationY: 0 },
 ]
+
+// Floor footprint of a shelf, for keeping walking routes clear of it
+function shelfFootprint({ position: [x, , z], rotationY }: (typeof SHELVES)[number]) {
+  const sideways = Math.abs(Math.sin(rotationY)) > 0.5
+  const halfX = (sideways ? SHELF_DEPTH : SHELF_WIDTH) / 2
+  const halfZ = (sideways ? SHELF_WIDTH : SHELF_DEPTH) / 2
+  return { minX: x - halfX, maxX: x + halfX, minZ: z - halfZ, maxZ: z + halfZ }
+}
+
+const FOOTPRINTS = SHELVES.map(shelfFootprint)
+
+// True if walking straight between two points (along x or z) hits a shelf
+function routeBlocked(ax: number, az: number, bx: number, bz: number) {
+  const minX = Math.min(ax, bx)
+  const maxX = Math.max(ax, bx)
+  const minZ = Math.min(az, bz)
+  const maxZ = Math.max(az, bz)
+  return FOOTPRINTS.some(
+    (f) => minX <= f.maxX && maxX >= f.minX && minZ <= f.maxZ && maxZ >= f.minZ,
+  )
+}
 
 // Every shelf has the same grid of slots, each holding at most one tape
 export const SHELF_TIERS = 5
@@ -76,8 +103,9 @@ export interface NavNode {
   z: number
 }
 
-// A 3x2 grid: the corner spots see a back shelf ahead and a side shelf to
-// the side, the middle back spot sees shelf C
+// A 3x2 grid: the corner spots see a back shelf ahead, a side shelf to the
+// side and F or G behind; the middle back spot sees shelf C. F and G block
+// the outer columns, so the rows connect through the middle.
 export const NODES: NavNode[] = [
   { id: 'counter', x: -cornerX, z: frontNodeZ },
   { id: 'entrance', x: 0, z: frontNodeZ },
@@ -105,7 +133,7 @@ export function neighbourInDirection(
     const along = ox * dx + oz * dz
     const across = Math.abs(ox * dz - oz * dx)
     if (along <= 0 || across > 0.05) continue
-    if (along < bestDist) {
+    if (along < bestDist && !routeBlocked(from.x, from.z, n.x, n.z)) {
       best = n
       bestDist = along
     }
