@@ -1,68 +1,52 @@
+import { PerspectiveCamera } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useWorld } from 'koota/react'
 import { useEffect, useRef } from 'react'
-import { type Object3D } from 'three'
-import { Mesh, PhysicsBody } from '../../shared/traits'
+import { MathUtils, type Object3D, type PerspectiveCamera as Cam } from 'three'
+import { CAMERA_PITCH, EYE_HEIGHT, SHELF_WIDTH, VIEW_DISTANCE } from '../../data/storeLayout'
+import { Mesh } from '../../shared/traits'
+import { sampleNav } from './nav'
 import { Controllable, NearestItem } from './traits'
-import { PerspectiveCamera, PointerLockControls } from '@react-three/drei'
-import { RigidBody, CapsuleCollider } from '@react-three/rapier'
-import { useFrame } from '@react-three/fiber'
-import { isTouchDevice, mobileCam } from './system'
 
-export function Controller({
-  position = [0, 0, 0],
-}: {
-  position?: [x: number, y: number, z: number]
-}) {
+const MIN_VFOV = 60
+// Horizontal half-angle needed to fit a whole shelf (plus a little margin)
+const SHELF_HALF_ANGLE = Math.atan((SHELF_WIDTH / 2 + 0.15) / VIEW_DISTANCE)
+
+// First person camera locked to the navigation nodes
+export function Controller() {
   const world = useWorld()
-  const bodyRef = useRef<any>(null)
-  const perspCamRef = useRef<any>(null)
   const ref = useRef<Object3D>(null)
-  const [x, y, z] = position
+  const camRef = useRef<Cam>(null)
+  const size = useThree((s) => s.size)
 
   useEffect(() => {
     if (!ref.current) return
-
-    const entity = world.spawn(
-      Controllable,
-      Mesh(ref.current ?? undefined),
-      PhysicsBody({ api: bodyRef }),
-    )
-
+    const entity = world.spawn(Controllable, Mesh(ref.current))
     if (!world.has(NearestItem)) world.add(NearestItem())
-
     return () => void entity.destroy()
-  }, [world, x, y, z])
+  }, [world])
+
+  // Widen the view on narrow (portrait) screens so a shelf still fits
+  useEffect(() => {
+    const cam = camRef.current
+    if (!cam) return
+    const aspect = size.width / size.height
+    const needed = 2 * Math.atan(Math.tan(SHELF_HALF_ANGLE) / aspect)
+    cam.fov = Math.max(MIN_VFOV, MathUtils.radToDeg(needed))
+    cam.updateProjectionMatrix()
+  }, [size])
 
   useFrame(() => {
-    if (!isTouchDevice || !perspCamRef.current) return
-    perspCamRef.current.rotation.order = 'YXZ'
-    perspCamRef.current.rotation.y = mobileCam.yaw
-    perspCamRef.current.rotation.x = mobileCam.pitch
+    const cam = camRef.current
+    if (!cam) return
+    const { x, z, yaw } = sampleNav(performance.now())
+    cam.position.set(x, EYE_HEIGHT, z)
+    cam.rotation.set(CAMERA_PITCH, yaw, 0, 'YXZ')
   })
 
   return (
     <group ref={ref}>
-      <RigidBody
-        colliders={false}
-        lockRotations
-        ref={bodyRef}
-        type="dynamic"
-        position={position}
-        mass={1}>
-        <CapsuleCollider args={[0.1, 0.125]} />
-        <PerspectiveCamera
-          ref={perspCamRef}
-          makeDefault
-          name="playerCamera"
-          fov={75}
-          position={[0, 0.18, 0]}
-          zoom={isTouchDevice ? 2 : 1.6}
-          rotation={[0, -Math.PI, 0]}
-        />
-        {!isTouchDevice && (
-          <PointerLockControls enabled camera={perspCamRef.current} />
-        )}
-      </RigidBody>
+      <PerspectiveCamera ref={camRef} makeDefault name="playerCamera" fov={MIN_VFOV} near={0.05} far={50} />
     </group>
   )
 }

@@ -3,7 +3,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
 
 import { PerformanceMonitor, Preload } from '@react-three/drei'
-import { isTouchDevice } from '../entities/controller/system'
+import {
+  isTouchDevice,
+  type NavAction,
+  queueNavAction,
+} from '../entities/controller/system'
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
 import useGameStore, { type SoundMode } from '../stores/gameStore'
@@ -43,16 +47,6 @@ export function Game() {
           <DebugLevel />
         </KootaSystems>
       </Canvas>
-      <div className="crosshair">
-        <div
-          style={{
-            width: 5,
-            height: 5,
-            backgroundColor: 'white',
-            borderRadius: '100%',
-          }}
-        />
-      </div>
       <Hud />
     </div>
   )
@@ -94,7 +88,7 @@ function SoundModeToast() {
   )
 }
 
-// What the crosshair is pointing at
+// What the pointer is over
 function LookPrompt() {
   const lookingAt = useGameStore((s) => s.lookingAt)
   if (!lookingAt) return null
@@ -127,10 +121,39 @@ function InteractionToast() {
   )
 }
 
+const NAV_BUTTONS: { action: NavAction; label: string; title: string }[] = [
+  { action: 'turnLeft', label: '\u21b6', title: 'Turn left (Q)' },
+  { action: 'forward', label: '\u2191', title: 'Forward (\u2191)' },
+  { action: 'turnRight', label: '\u21b7', title: 'Turn right (E)' },
+  { action: 'left', label: '\u2190', title: 'Step left (\u2190)' },
+  { action: 'back', label: '\u2193', title: 'Back (\u2193)' },
+  { action: 'right', label: '\u2192', title: 'Step right (\u2192)' },
+]
+
+function NavButtons() {
+  return (
+    <div className="nav-buttons">
+      {NAV_BUTTONS.map(({ action, label, title }) => (
+        <button
+          key={action}
+          title={title}
+          aria-label={title}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            queueNavAction(action)
+          }}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function Hud() {
   return (
     <>
       <LookPrompt />
+      <NavButtons />
       <div className="ui">
         <SoundModeToast />
         <InteractionToast />

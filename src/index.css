@@ -64,18 +64,12 @@ body {
 }
 
 
-.crosshair {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  inset: 0;
-}
+
 
 .look-prompt {
   position: fixed;
   left: 50%;
-  top: calc(50% + 24px);
+  bottom: 24px;
   transform: translateX(-50%);
   z-index: 10;
   color: white;
@@ -92,4 +86,31 @@ body {
   opacity: 0.7;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.nav-buttons {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  gap: 6px;
+}
+.nav-buttons button {
+  height: 52px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(20, 30, 60, 0.6);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.nav-buttons button:hover {
+  background: rgba(29, 63, 191, 0.8);
+}
+.nav-buttons button:focus-visible {
+  outline: 2px solid #ffd400;
 }

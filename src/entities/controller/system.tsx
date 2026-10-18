@@ -1,199 +1,89 @@
 import { type World } from 'koota'
-import { Quaternion, Raycaster, Vector3 } from 'three'
-
-// Reusable objects to avoid per-frame allocations (GC pressure)
-const _quat = new Quaternion()
-const _forwardVec = new Vector3()
-const _rightVec = new Vector3()
-const _moveVec = new Vector3()
-const _upVec = new Vector3(0, 1, 0)
-const _rayOrigin = new Vector3()
-const _rayDir = new Vector3()
-const _raycaster = new Raycaster()
-import { Mesh, PhysicsBody } from '../../shared/traits'
+import { Raycaster, Vector2 } from 'three'
+import { Mesh } from '../../shared/traits'
 import useGameStore from '../../stores/gameStore'
 import { setMusicMuted } from '../ambience'
 import { playInteract, resumeAudioContext, setSfxMuted, tickFootstep } from '../sounds'
+import { step, turn } from './nav'
 import { Controllable, NearestItem } from './traits'
 
-let keys = new Set<string>()
-let justPressed = new Set<string>()
-let initialized = false
+const _raycaster = new Raycaster()
+const _pointer = new Vector2(0, 0)
 
-let _lastCamAngle: Quaternion = new Quaternion()
-export const playerPos = { x: 0, y: 0, z: 0 }
+// Max distance from the camera to interact with something
+export const INTERACT_REACH = 3.5
 
-// Max distance (from the camera, along the look ray) to interact with something
-export const INTERACT_REACH = 0.55
-
-// Object names that can be looked at and interacted with. Each such object
+// Object names that can be pointed at and interacted with. Each such object
 // carries a human readable `userData.label`.
 export const INTERACTABLE_NAMES = ['tape', 'shelf', 'counter', 'dropBin']
 
-// Mobile touch state
 export const isTouchDevice =
   typeof window !== 'undefined' &&
   ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-export const mobileCam = { yaw: -Math.PI, pitch: 0 }
-let touchMoveForward = false
-// Primary touch: interact / tap / double-tap-hold-forward
-let activeTouchId: number | null = null
-let touchStartX = 0
-let touchStartY = 0
-let touchDragging = false
-let lastTapEndTime = 0
-let doubleTapHeld = false
-const DRAG_THRESHOLD_PX = 8
-const DOUBLE_TAP_MS = 300
-const TOUCH_SENSITIVITY = 0.004
 
-function initTouchListeners() {
-  window.addEventListener(
-    'touchstart',
-    (e) => {
-      const target = e.target as HTMLElement
-      if (target.closest('button, a, .menu')) return
-      e.preventDefault()
-      resumeAudioContext()
-      const now = performance.now()
+export type NavAction = 'forward' | 'back' | 'left' | 'right' | 'turnLeft' | 'turnRight'
 
-      for (const touch of e.changedTouches) {
-        if (activeTouchId !== null) continue
+const KEY_ACTIONS: Record<string, NavAction> = {
+  arrowup: 'forward',
+  w: 'forward',
+  arrowdown: 'back',
+  s: 'back',
+  arrowleft: 'left',
+  a: 'left',
+  arrowright: 'right',
+  d: 'right',
+  q: 'turnLeft',
+  e: 'turnRight',
+}
 
-        activeTouchId = touch.identifier
-        touchStartX = touch.clientX
-        touchStartY = touch.clientY
-        touchDragging = false
+let justPressed = new Set<string>()
+let queuedActions: NavAction[] = []
+let clicked = false
+let initialized = false
 
-        // Double tap + hold → move forward
-        if (now - lastTapEndTime < DOUBLE_TAP_MS) {
-          doubleTapHeld = true
-          touchMoveForward = true
-          continue
-        }
+// Called by on-screen buttons
+export function queueNavAction(action: NavAction) {
+  resumeAudioContext()
+  queuedActions.push(action)
+}
 
-        // Single touch: potential interact hold
-        keys.add(' ')
-      }
-    },
-    { passive: false },
-  )
-
-  window.addEventListener(
-    'touchmove',
-    (e) => {
-      e.preventDefault()
-
-      for (const touch of e.changedTouches) {
-        if (touch.identifier !== activeTouchId) continue
-
-        const dx = touch.clientX - touchStartX
-        const dy = touch.clientY - touchStartY
-
-        if (
-          !touchDragging &&
-          Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD_PX
-        ) {
-          touchDragging = true
-          keys.delete(' ')
-        }
-
-        // Single-finger drag → camera look (always, including while moving forward)
-        if (touchDragging) {
-          mobileCam.yaw -= dx * TOUCH_SENSITIVITY
-          mobileCam.pitch -= dy * TOUCH_SENSITIVITY
-          mobileCam.pitch = Math.max(
-            -Math.PI / 2,
-            Math.min(Math.PI / 2, mobileCam.pitch),
-          )
-          touchStartX = touch.clientX
-          touchStartY = touch.clientY
-        }
-      }
-    },
-    { passive: false },
-  )
-
-  window.addEventListener(
-    'touchend',
-    (e) => {
-      for (const touch of e.changedTouches) {
-        if (touch.identifier !== activeTouchId) continue
-
-        activeTouchId = null
-
-        if (doubleTapHeld) {
-          doubleTapHeld = false
-          touchMoveForward = false
-          continue
-        }
-
-        if (!touchDragging) {
-          justPressed.add(' ')
-          lastTapEndTime = performance.now()
-        }
-
-        keys.delete(' ')
-        touchDragging = false
-      }
-    },
-    { passive: false },
-  )
-
-  window.addEventListener(
-    'touchcancel',
-    () => {
-      activeTouchId = null
-      doubleTapHeld = false
-      touchMoveForward = false
-      touchDragging = false
-      keys.delete(' ')
-    },
-    { passive: false },
+function setPointer(clientX: number, clientY: number) {
+  _pointer.set(
+    (clientX / window.innerWidth) * 2 - 1,
+    -(clientY / window.innerHeight) * 2 + 1,
   )
 }
 
-function initKeyboardListeners() {
-  if (initialized) return
+function isUi(target: EventTarget | null) {
+  return !!(target as HTMLElement | null)?.closest?.('button, a, .menu')
+}
+
+function initInputListeners() {
+  if (initialized || typeof window === 'undefined') return
   initialized = true
-
-  if (typeof window === 'undefined') return
-
-  if (isTouchDevice) {
-    initTouchListeners()
-    return
-  }
 
   window.addEventListener('keydown', (e) => {
     resumeAudioContext()
-    keys.add(e.key.toLowerCase())
-    if (!e.repeat) justPressed.add(e.key.toLowerCase())
+    const key = e.key.toLowerCase()
+    if (e.repeat) return
+    justPressed.add(key)
+    if (key.startsWith('arrow')) e.preventDefault()
   })
 
-  window.addEventListener('keyup', (e) => {
-    keys.delete(e.key.toLowerCase())
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'mouse') setPointer(e.clientX, e.clientY)
   })
 
-  window.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return
+  window.addEventListener('pointerdown', (e) => {
+    if (isUi(e.target)) return
     resumeAudioContext()
-    keys.add(' ')
-  })
-
-  window.addEventListener('mouseup', (e) => {
-    if (e.button !== 0) return
-    keys.delete(' ')
-  })
-
-  window.addEventListener('click', (e) => {
-    if (e.button !== 0) return
-    justPressed.add(' ')
+    setPointer(e.clientX, e.clientY)
+    clicked = true
   })
 }
 
 export const controllerInputSystem = (world: World, _delta: number) => {
-  initKeyboardListeners()
-
+  initInputListeners()
   const now = performance.now()
 
   if (justPressed.has('m')) {
@@ -203,17 +93,47 @@ export const controllerInputSystem = (world: World, _delta: number) => {
     setSfxMuted(mode === 'muteAll')
   }
 
-  if (justPressed.has(' ')) {
-    const nearest = world.get(NearestItem) as any
-    if (nearest?.mesh) interact(nearest.mesh)
+  for (const key of justPressed) {
+    if (KEY_ACTIONS[key]) queuedActions.push(KEY_ACTIONS[key])
+  }
+  // Only the first queued action runs; extra presses during a move are dropped
+  const action = queuedActions[0]
+  queuedActions = []
+  if (action && useGameStore.getState().scene === 'game') runAction(action, now)
+
+  // The camera can move under a still pointer, so check what it's over every frame
+  const cam = findCamera(world)
+  if (cam) updateHovered(world, cam)
+
+  if (clicked) {
+    clicked = false
+    const hovered = world.get(NearestItem) as any
+    if (hovered?.mesh) interact(hovered.mesh)
   }
 
-  moveEntities(world, now)
-
-  justPressed = new Set([])
+  justPressed = new Set()
 }
 
 export default controllerInputSystem
+
+function runAction(action: NavAction, now: number) {
+  switch (action) {
+    case 'forward':
+    case 'right':
+    case 'back':
+    case 'left': {
+      const relative = { forward: 0, right: 1, back: 2, left: 3 }[action] as 0 | 1 | 2 | 3
+      if (step(relative, now)) tickFootstep(true, now)
+      break
+    }
+    case 'turnLeft':
+      turn(-1, now)
+      break
+    case 'turnRight':
+      turn(1, now)
+      break
+  }
+}
 
 // Placeholder: real tape/shelf/customer behaviour comes in later steps
 function interact(mesh: any) {
@@ -221,55 +141,18 @@ function interact(mesh: any) {
   useGameStore.getState().interact(mesh.userData?.label ?? mesh.name)
 }
 
-function moveEntities(world: World, now: number) {
-  const forwardKey =
-    keys.has('w') || keys.has('arrowup') || touchMoveForward ? 1 : 0
-  const backKey = keys.has('s') || keys.has('arrowdown') ? 1 : 0
-  const leftKey = keys.has('a') || keys.has('arrowleft') ? 1 : 0
-  const rightKey = keys.has('d') || keys.has('arrowright') ? 1 : 0
-
+function findCamera(world: World) {
   for (const entity of world.query(Controllable)) {
     const mesh = entity.get(Mesh) as any
-    const cam = mesh.getObjectByName?.('playerCamera', true)
-
-    cam?.getWorldQuaternion?.(_quat)
-
-    _forwardVec.set(0, 0, -1).applyQuaternion(_quat)
-    _rightVec.copy(_forwardVec).cross(_upVec)
-
-    _moveVec
-      .set(0, 0, 0)
-      .addScaledVector(_forwardVec, forwardKey - backKey)
-      .addScaledVector(_rightVec, rightKey - leftKey)
-    if (_moveVec.lengthSq() > 0) _moveVec.normalize()
-
-    const phys = entity.get(PhysicsBody)?.api as any
-    const speed = isTouchDevice ? 0.7 : 1.05
-    phys.current.setLinvel(
-      { x: _moveVec.x * speed, y: 0, z: _moveVec.z * speed },
-      true,
-    )
-    tickFootstep(_moveVec.lengthSq() > 0, now)
-
-    const translation = phys?.current?.translation?.()
-    if (translation) {
-      playerPos.x = translation.x
-      playerPos.y = translation.y
-      playerPos.z = translation.z
-    }
-
-    const dot = Math.abs(_lastCamAngle.dot(_quat))
-    const angle = Math.acos(Math.max(-1, Math.min(1, dot)))
-    _lastCamAngle.copy(_quat)
-    if (angle > 0.0005 || _moveVec.lengthSq() > 0) {
-      computeAndSetNearest(world, cam)
-    }
+    const cam = mesh?.getObjectByName?.('playerCamera')
+    if (cam) return cam
   }
+  return null
 }
 
-const computeAndSetNearest = (world: World, camera: any) => {
+const updateHovered = (world: World, camera: any) => {
   let best: { entity: any; mesh: any; distance: number } | null = null
-  const raycaster = getRaycaster(camera)
+  _raycaster.setFromCamera(_pointer, camera)
 
   for (const e of world.entities) {
     const mesh = e.get(Mesh) as any
@@ -279,7 +162,7 @@ const computeAndSetNearest = (world: World, camera: any) => {
       const objs = mesh.getObjectsByProperty?.('name', name) ?? []
       for (const obj of objs) {
         if (!obj?.visible) continue
-        const intersects = raycaster.intersectObject(obj, true)
+        const intersects = _raycaster.intersectObject(obj, true)
         if (intersects.length === 0) continue
         const dist = intersects[0].distance
         if (dist > INTERACT_REACH) continue
@@ -291,24 +174,15 @@ const computeAndSetNearest = (world: World, camera: any) => {
   }
 
   const current = world.get(NearestItem)
-  const newNearest = best
+  const next = best
     ? { entity: best.entity, mesh: best.mesh }
     : { entity: null, mesh: null }
 
-  if (
-    current?.entity !== newNearest.entity ||
-    current?.mesh !== newNearest.mesh
-  ) {
-    world.set(NearestItem, newNearest)
+  if (current?.entity !== next.entity || current?.mesh !== next.mesh) {
+    world.set(NearestItem, next)
+    document.body.style.cursor = best ? 'pointer' : ''
     useGameStore
       .getState()
       .setLookingAt(best ? (best.mesh.userData?.label ?? best.mesh.name) : null)
   }
-}
-
-const getRaycaster = (cam: any) => {
-  cam?.getWorldPosition?.(_rayOrigin)
-  cam?.getWorldDirection?.(_rayDir)
-  _raycaster.set(_rayOrigin, _rayDir)
-  return _raycaster
 }

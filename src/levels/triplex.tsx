@@ -1,13 +1,10 @@
-import { Physics } from '@react-three/rapier'
 import { RootProviders } from '../providers'
 import { Store } from './store'
 
 export function DebugLevel() {
   return (
     <RootProviders>
-      <Physics gravity={[0, -9.81, 0]}>
-        <Store hideCeiling />
-      </Physics>
+      <Store hideCeiling />
       <ambientLight intensity={1} />
     </RootProviders>
   )
