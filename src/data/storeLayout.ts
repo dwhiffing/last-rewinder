@@ -2,11 +2,10 @@
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
 
-export const STORE_WIDTH = 12
-export const STORE_DEPTH = 9
+export const STORE_WIDTH = 10
 export const STORE_HEIGHT = 3
-export const FRONT_Z = -4.5
-export const BACK_Z = 4.5
+export const FRONT_Z = -5.2
+export const BACK_Z = 4
 
 export const EYE_HEIGHT = 1.5
 // Downward camera tilt so a whole shelf (floor to sign) fits on screen
@@ -17,7 +16,7 @@ export const SHELF_HEIGHT = 1.8
 export const SHELF_DEPTH = 0.4
 
 // Distance from a node to the front of the shelf it looks at
-export const VIEW_DISTANCE = 2
+export const VIEW_DISTANCE = 1.8
 
 // Facing: 0 = +z (towards the back wall), 1 = +x, 2 = -z (towards the front), 3 = -x
 export type Facing = 0 | 1 | 2 | 3
@@ -37,11 +36,16 @@ const sideWallX = STORE_WIDTH / 2 - WALL_INNER - SHELF_DEPTH / 2
 // Corner spots sit VIEW_DISTANCE from both the back shelf and the side shelf
 const cornerX = sideWallX - SHELF_DEPTH / 2 - VIEW_DISTANCE
 
-// Shelves F and G stand opposite B and D, facing them across the corner spots
+// Shelves F and G stand opposite B and D, facing them across the corner
+// spots; H and I stand back to back with them, facing the store front
 const facingRowZ = backNodeZ - VIEW_DISTANCE - SHELF_DEPTH / 2
+const frontFacingRowZ = facingRowZ - SHELF_DEPTH
+// Standing spots in front of H and I (and the counter, entrance, drop bin)
+const frontNodeZ = frontFacingRowZ - SHELF_DEPTH / 2 - VIEW_DISTANCE
 
 // Three shelves against the back wall, one on each side wall by the back
-// corners, and two freestanding ones facing back towards B and D.
+// corners, and two double-sided freestanding units (F|H and G|I) between
+// the corner spots and the front row.
 // Rotation turns each shelf's front (local +z) into the room.
 export const SHELVES: {
   id: string
@@ -55,6 +59,8 @@ export const SHELVES: {
   { id: 'E', position: [sideWallX, 0, backNodeZ], rotationY: -Math.PI / 2 },
   { id: 'F', position: [-cornerX, 0, facingRowZ], rotationY: 0 },
   { id: 'G', position: [cornerX, 0, facingRowZ], rotationY: 0 },
+  { id: 'H', position: [-cornerX, 0, frontFacingRowZ], rotationY: Math.PI },
+  { id: 'I', position: [cornerX, 0, frontFacingRowZ], rotationY: Math.PI },
 ]
 
 // Floor footprint of a shelf, for keeping walking routes clear of it
@@ -91,11 +97,12 @@ export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
   ),
 )
 
-export const COUNTER_POSITION: [number, number, number] = [-cornerX, 0, -3.2]
-export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, -4.05]
+// The counter sits a metre in front of its spot, leaving room for customers
+// between it and the front wall; the drop bin stands against the front wall
+export const COUNTER_POSITION: [number, number, number] = [-cornerX, 0, frontNodeZ - 1.3]
+export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.4]
 export const ENTRANCE_X = 0
 
-const frontNodeZ = -1.7
 
 export interface NavNode {
   id: string
@@ -104,8 +111,9 @@ export interface NavNode {
 }
 
 // A 3x2 grid: the corner spots see a back shelf ahead, a side shelf to the
-// side and F or G behind; the middle back spot sees shelf C. F and G block
-// the outer columns, so the rows connect through the middle.
+// side and F or G behind; the middle back spot sees shelf C; the outer front
+// spots see H or I ahead and the counter or drop bin behind. The shelf units
+// block the outer columns, so the rows connect through the middle.
 export const NODES: NavNode[] = [
   { id: 'counter', x: -cornerX, z: frontNodeZ },
   { id: 'entrance', x: 0, z: frontNodeZ },
