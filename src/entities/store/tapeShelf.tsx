@@ -29,6 +29,16 @@ const slotPosition = (tier: number, slot: number): [number, number, number] => [
   SHELF_DEPTH / 2 - TAPE_SIZE[2] / 2 - 0.01,
 ]
 
+// Break a title at the space closest to its middle
+function splitInTwo(title: string) {
+  const mid = title.length / 2
+  let best = -1
+  for (let i = 0; i < title.length; i++) {
+    if (title[i] === ' ' && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i
+  }
+  return best < 0 ? [title] : [title.slice(0, best), title.slice(best + 1)]
+}
+
 // Spine art: the title running bottom-to-top on the genre color. One texture
 // per tape, made on first use and kept for the whole game.
 const spineTextures = new Map<string, CanvasTexture>()
@@ -50,10 +60,14 @@ function spineTexture(tapeId: string) {
   g.fillStyle = '#111'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  const words = tape.title.toUpperCase()
-  const size = words.length > 16 ? 26 : 32
+  const title = tape.title.toUpperCase()
+  const lines = title.length > 12 ? splitInTwo(title) : [title]
+  const size = lines.length > 1 ? 26 : 32
   g.font = `bold ${size}px sans-serif`
-  g.fillText(words, 0, 0, canvas.height - 20)
+  lines.forEach((line, i) => {
+    const y = (i - (lines.length - 1) / 2) * size * 1.05
+    g.fillText(line, 0, y, canvas.height - 20)
+  })
   const tex = new CanvasTexture(canvas)
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = 4
