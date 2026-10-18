@@ -15,7 +15,7 @@ import { sampleNav } from './nav'
 import { Controllable, NearestItem } from './traits'
 
 // Horizontal half-angle needed to fit a whole shelf (plus a little margin)
-const SHELF_HALF_ANGLE = Math.atan((SHELF_WIDTH / 2 + 0.15) / VIEW_DISTANCE)
+const SHELF_HALF_ANGLE = Math.atan((SHELF_WIDTH / 2 + 0.02) / VIEW_DISTANCE)
 
 // First person camera locked to the navigation nodes
 export function Controller() {
