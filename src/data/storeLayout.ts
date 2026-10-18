@@ -6,15 +6,21 @@ export const STORE_HEIGHT = 2.6
 export const BACK_Z = 4
 
 export const EYE_HEIGHT = 1.5
-// Downward camera tilt so a whole shelf (floor to sign) fits on screen
-export const CAMERA_PITCH = (-18 * Math.PI) / 180
 
 export const SHELF_WIDTH = 1.6
-export const SHELF_HEIGHT = 1.44
+// Tall shelves: the top sits about a foot below the ceiling
+export const SHELF_HEIGHT = STORE_HEIGHT - 0.3
 export const SHELF_DEPTH = 0.32
 
 // Distance from a node to the front of the shelf it looks at
-export const VIEW_DISTANCE = 1.44
+export const VIEW_DISTANCE = 1.6
+
+// Aim the camera so a whole shelf, floor to top, fits on screen from its spot
+const shelfTopAngle = Math.atan((SHELF_HEIGHT - EYE_HEIGHT) / VIEW_DISTANCE)
+const shelfFootAngle = Math.atan(EYE_HEIGHT / VIEW_DISTANCE)
+export const CAMERA_PITCH = (shelfTopAngle - shelfFootAngle) / 2
+// Minimum vertical field of view in degrees, with a little margin
+export const CAMERA_VFOV = ((shelfTopAngle + shelfFootAngle) * 180) / Math.PI + 4
 
 // Standing spots form a grid with the same gap between neighbours in both
 // directions. Front to back, two spots are separated by VIEW_DISTANCE, a
@@ -93,7 +99,7 @@ function routeBlocked(ax: number, az: number, bx: number, bz: number) {
 }
 
 // Every shelf has the same grid of slots, each holding at most one tape
-export const SHELF_TIERS = 5
+export const SHELF_TIERS = 6
 export const SLOTS_PER_TIER = 12
 
 export const slotId = (shelf: string, tier: number, slot: number) =>

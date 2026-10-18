@@ -3,12 +3,17 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useWorld } from 'koota/react'
 import { useEffect, useRef } from 'react'
 import { MathUtils, type Object3D, type PerspectiveCamera as Cam } from 'three'
-import { CAMERA_PITCH, EYE_HEIGHT, SHELF_WIDTH, VIEW_DISTANCE } from '../../data/storeLayout'
+import {
+  CAMERA_PITCH,
+  CAMERA_VFOV,
+  EYE_HEIGHT,
+  SHELF_WIDTH,
+  VIEW_DISTANCE,
+} from '../../data/storeLayout'
 import { Mesh } from '../../shared/traits'
 import { sampleNav } from './nav'
 import { Controllable, NearestItem } from './traits'
 
-const MIN_VFOV = 60
 // Horizontal half-angle needed to fit a whole shelf (plus a little margin)
 const SHELF_HALF_ANGLE = Math.atan((SHELF_WIDTH / 2 + 0.15) / VIEW_DISTANCE)
 
@@ -32,7 +37,7 @@ export function Controller() {
     if (!cam) return
     const aspect = size.width / size.height
     const needed = 2 * Math.atan(Math.tan(SHELF_HALF_ANGLE) / aspect)
-    cam.fov = Math.max(MIN_VFOV, MathUtils.radToDeg(needed))
+    cam.fov = Math.max(CAMERA_VFOV, MathUtils.radToDeg(needed))
     cam.updateProjectionMatrix()
   }, [size])
 
@@ -46,7 +51,7 @@ export function Controller() {
 
   return (
     <group ref={ref}>
-      <PerspectiveCamera ref={camRef} makeDefault name="playerCamera" fov={MIN_VFOV} near={0.05} far={50} />
+      <PerspectiveCamera ref={camRef} makeDefault name="playerCamera" fov={CAMERA_VFOV} near={0.05} far={50} />
     </group>
   )
 }

@@ -17,7 +17,9 @@ const PANEL = 0.03
 // A VHS box standing spine-out (spine exaggerated so it's easy to click)
 const TAPE_SIZE: [number, number, number] = [0.1, 0.21, 0.13]
 
-const tierSpacing = (SHELF_HEIGHT - PANEL) / SHELF_TIERS
+// A header panel across the top of the front carries the shelf's sign
+const HEADER = 0.24
+const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
 
 const slotPosition = (tier: number, slot: number): [number, number, number] => [
@@ -98,9 +100,9 @@ export function TapeShelf({
 
       <Label
         text={`SHELF ${id}`}
-        position={[0, SHELF_HEIGHT + 0.16, 0]}
+        position={[0, SHELF_HEIGHT - HEADER / 2, SHELF_DEPTH / 2 + 0.005]}
         width={SHELF_WIDTH * 0.5}
-        height={0.24}
+        height={HEADER - 0.04}
         background="#1d3fbf"
         color="#ffd400"
       />
