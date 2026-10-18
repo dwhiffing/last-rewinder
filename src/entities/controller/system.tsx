@@ -15,7 +15,7 @@ export const INTERACT_REACH = 3.5
 
 // Object names that can be pointed at and interacted with. Each such object
 // carries a human readable `userData.label`.
-export const INTERACTABLE_NAMES = ['tape', 'slot', 'shelf', 'counter', 'computer', 'dropBin']
+export const INTERACTABLE_NAMES = ['tape', 'slot', 'shelf', 'counter', 'computer', 'rewinder', 'dropBin']
 
 export const isTouchDevice =
   typeof window !== 'undefined' &&
@@ -55,7 +55,7 @@ function setPointer(clientX: number, clientY: number) {
 }
 
 function isUi(target: EventTarget | null) {
-  return !!(target as HTMLElement | null)?.closest?.('button, a, .menu, .computer, .tape-card')
+  return !!(target as HTMLElement | null)?.closest?.('button, a, .menu, .computer, .tape-card, .day-summary')
 }
 
 function initInputListeners() {
@@ -152,7 +152,7 @@ function runAction(action: NavAction, now: number) {
 
 function interact(mesh: any) {
   const store = useGameStore.getState()
-  const { slotId, label } = mesh.userData ?? {}
+  const { slotId } = mesh.userData ?? {}
   if (mesh.name === 'tape') {
     const before = store.carried.length
     store.pickUp(slotId)
@@ -168,9 +168,10 @@ function interact(mesh: any) {
     }
     playInteract()
     store.setComputerOpen(true)
-  } else if (mesh.name !== 'shelf' && mesh.name !== 'counter') {
-    // The drop bin does nothing yet
-    store.showMessage(`${label ?? mesh.name}: nothing to do here yet`)
+  } else if (mesh.name === 'dropBin') {
+    store.takeFromReturnBox()
+  } else if (mesh.name === 'rewinder') {
+    store.useRewinder()
   }
 }
 

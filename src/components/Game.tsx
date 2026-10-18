@@ -12,7 +12,7 @@ import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
 import { type Order } from '../data/orders'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
-import useGameStore, { MAX_CARRIED, type SoundMode } from '../stores/gameStore'
+import useGameStore, { type GameState, MAX_CARRIED, type SoundMode } from '../stores/gameStore'
 
 function MountScheduler() {
   useFrame(() => {
@@ -90,13 +90,30 @@ function SoundModeToast() {
   )
 }
 
-function actionHint(kind: string, carried: string[]) {
+function actionHint(kind: string, s: GameState) {
+  const { carried } = s
   const verb = isTouchDevice ? 'Tap' : 'Click'
+  const top = carried[carried.length - 1]
   if (kind === 'computer') return `${verb} to check orders`
+  if (kind === 'dropBin') {
+    if (!s.returnBox.length) return 'Empty'
+    if (carried.length >= MAX_CARRIED) return 'Hands full'
+    return `${verb} to take a tape (${s.returnBox.length} inside)`
+  }
+  if (kind === 'rewinder') {
+    if (s.rewinder) {
+      const left = s.rewinder.doneAt - s.time
+      return left > 0
+        ? `Rewinding ${tapeById(s.rewinder.tapeId).title}: ${Math.ceil(left)}s`
+        : `${verb} to take out ${tapeById(s.rewinder.tapeId).title}`
+    }
+    if (top && s.needsRewind[top]) return `${verb} to rewind ${tapeById(top).title}`
+    return 'Empty'
+  }
   if (kind === 'tape')
     return carried.length >= MAX_CARRIED ? 'Hands full' : `${verb} to pick up`
   if (kind === 'slot') {
-    const top = carried[carried.length - 1]
+    if (top && s.needsRewind[top]) return `Rewind ${tapeById(top).title} first`
     return top ? `${verb} to put down ${tapeById(top).title}` : 'Nothing to put down'
   }
   return null
@@ -105,9 +122,9 @@ function actionHint(kind: string, carried: string[]) {
 // What the pointer is over, and what clicking it would do
 function LookPrompt() {
   const hovered = useGameStore((s) => s.hovered)
-  const carried = useGameStore((s) => s.carried)
+  // re-read the rest of the state whenever the hint text would change
+  const hint = useGameStore((s) => (s.hovered ? actionHint(s.hovered.kind, s) : null))
   if (!hovered) return null
-  const hint = actionHint(hovered.kind, carried)
   return (
     <div className="look-prompt">
       {hovered.label}
@@ -119,6 +136,7 @@ function LookPrompt() {
 // Tapes in your hands; the top of the stack is the one you can put down
 function CarriedStack() {
   const carried = useGameStore((s) => s.carried)
+  const needsRewind = useGameStore((s) => s.needsRewind)
   return (
     <div className="carried">
       <div className="carried-title">
@@ -130,6 +148,7 @@ function CarriedStack() {
           <div key={id} className={`carried-tape ${i === 0 ? 'top' : ''}`}>
             <span className="swatch" style={{ background: GENRE_COLORS[tape.genre] }} />
             {tape.title}
+            {needsRewind[id] && <span className="rewind-tag">rewind</span>}
           </div>
         )
       })}
@@ -194,11 +213,16 @@ const formatTime = (seconds: number) => {
 function MoneyHud() {
   const money = useGameStore((s) => s.money)
   const orders = useGameStore((s) => s.orders)
+  const day = useGameStore((s) => s.day)
+  const dayEndsAt = useGameStore((s) => s.dayEndsAt)
   const time = useClock()
   const soonest = orders.reduce((min, o) => Math.min(min, o.expiresAt), Infinity)
   const left = soonest - time
   return (
     <div className="money-hud">
+      <div className="day-clock">
+        Day {day} \u00b7 closes in {formatTime(dayEndsAt - time)}
+      </div>
       <div className="money">${money}</div>
       <div className={`orders-count ${left < 15 ? 'urgent' : ''}`}>
         {orders.length
@@ -288,12 +312,14 @@ function TapeCard() {
   const top = useGameStore((s) => s.carried[s.carried.length - 1])
   const flipped = useGameStore((s) => s.coverFlipped)
   const flip = useGameStore((s) => s.flipCover)
+  const unrewound = useGameStore((s) => !!top && !!s.needsRewind[top])
   if (!top) return null
   const tape = tapeById(top)
   return (
     <div className="tape-card" onPointerDown={() => flip()} title="Flip (F)">
       <div className={`tape-card-inner ${flipped ? 'flipped' : ''}`}>
         <div className="tape-front" style={{ background: GENRE_COLORS[tape.genre] }}>
+          {unrewound && <div className="rewind-sticker">Please rewind</div>}
           <div className="tape-actors">{tape.actors.join(' \u00b7 ')}</div>
           <div className="tape-title">{tape.title}</div>
           <div className="tape-front-foot">
@@ -329,9 +355,31 @@ function TapeCard() {
   )
 }
 
+// End of day: what happened today and a button to open tomorrow
+function DaySummaryScreen() {
+  const summary = useGameStore((s) => s.dayOver)
+  const day = useGameStore((s) => s.day)
+  const money = useGameStore((s) => s.money)
+  const next = useGameStore((s) => s.startNextDay)
+  if (!summary) return null
+  return (
+    <div className="day-summary">
+      <div className="day-summary-card">
+        <h2>Day {day} is over</h2>
+        <div>Orders filled: {summary.filled}</div>
+        <div>Orders missed: {summary.missed}</div>
+        <div>Earned today: ${summary.earned}</div>
+        <div className="day-summary-total">Total: ${money}</div>
+        <button onClick={() => next()}>Open day {day + 1}</button>
+      </div>
+    </div>
+  )
+}
+
 function Hud() {
   return (
     <>
+      <DaySummaryScreen />
       <LookPrompt />
       <CarriedStack />
       <MoneyHud />

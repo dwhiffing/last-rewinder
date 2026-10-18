@@ -18,6 +18,7 @@ import Block from '../entities/store/block'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
+import { GENRE_COLORS, tapeById } from '../data/tapes'
 import useGameStore from '../stores/gameStore'
 
 const WALL = 0.2
@@ -94,6 +95,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         />
       </group>
       <Computer position={[cx + 0.45, COUNTER_SIZE[1] + 0.045, cz]} />
+      <TapeRewinder position={[cx - 0.5, COUNTER_SIZE[1] + 0.045, cz]} />
       <Label
         text="CHECKOUT"
         position={[cx, 1.5, cz - 0.1]}
@@ -104,8 +106,9 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       />
 
       {/* quick drop bin for returned tapes */}
-      <group name="dropBin" userData={{ label: 'Quick drop bin' }}>
+      <group name="dropBin" userData={{ label: 'Return box' }}>
         <Block size={[0.6, 0.7, 0.6]} position={[bx, 0.35, bz]} color="#2e7d32" />
+        <ReturnBoxTapes position={[bx, 0.7, bz]} />
       </group>
       <Label
         text="RETURNS"
@@ -166,6 +169,48 @@ function Computer({ position }: { position: [number, number, number] }) {
       />
       {/* keyboard */}
       <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + 0.18]} color="#cfc9b8" />
+    </group>
+  )
+}
+
+// Tapes waiting in the return box, piled flat on top so you can see how many
+function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
+  const box = useGameStore((s) => s.returnBox)
+  const [x, y, z] = position
+  return (
+    <>
+      {box.map((id, i) => (
+        <Block
+          key={id}
+          size={[0.21, 0.035, 0.13]}
+          position={[x + ((i % 2) - 0.5) * 0.24, y + 0.018 + Math.floor(i / 2) * 0.036, z + ((i % 3) - 1) * 0.04]}
+          color={GENRE_COLORS[tapeById(id).genre]}
+        />
+      ))}
+    </>
+  )
+}
+
+// Placeholder tape rewinder: a slot on top holds one tape; the light is red
+// while it rewinds and green when the tape is ready to take out
+function TapeRewinder({ position }: { position: [number, number, number] }) {
+  const rewinder = useGameStore((s) => s.rewinder)
+  const done = useGameStore((s) => !!s.rewinder && s.rewinder.doneAt <= s.time)
+  const [x, y, z] = position
+  return (
+    <group name="rewinder" userData={{ label: 'Tape rewinder' }}>
+      <Block size={[0.32, 0.1, 0.24]} position={[x, y + 0.03, z]} color="#222" />
+      {rewinder && (
+        <Block
+          size={[0.21, 0.13, 0.035]}
+          position={[x, y + 0.13, z]}
+          color={GENRE_COLORS[tapeById(rewinder.tapeId).genre]}
+        />
+      )}
+      <mesh position={[x + 0.12, y + 0.05, z + 0.121]}>
+        <boxGeometry args={[0.03, 0.03, 0.005]} />
+        <meshBasicMaterial color={!rewinder ? '#333' : done ? '#3cff3c' : '#ff3030'} toneMapped={false} />
+      </mesh>
     </group>
   )
 }
