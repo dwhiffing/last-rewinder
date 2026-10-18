@@ -2,20 +2,19 @@
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
 
-export const STORE_HEIGHT = 3
-export const FRONT_Z = -5.2
+export const STORE_HEIGHT = 2.6
 export const BACK_Z = 4
 
 export const EYE_HEIGHT = 1.5
 // Downward camera tilt so a whole shelf (floor to sign) fits on screen
-export const CAMERA_PITCH = (-12 * Math.PI) / 180
+export const CAMERA_PITCH = (-18 * Math.PI) / 180
 
-export const SHELF_WIDTH = 2
-export const SHELF_HEIGHT = 1.8
-export const SHELF_DEPTH = 0.4
+export const SHELF_WIDTH = 1.6
+export const SHELF_HEIGHT = 1.44
+export const SHELF_DEPTH = 0.32
 
 // Distance from a node to the front of the shelf it looks at
-export const VIEW_DISTANCE = 1.8
+export const VIEW_DISTANCE = 1.44
 
 // Standing spots form a grid with the same gap between neighbours in both
 // directions. Front to back, two spots are separated by VIEW_DISTANCE, a
@@ -106,10 +105,16 @@ export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
   ),
 )
 
-// The counter sits a metre in front of its spot, leaving room for customers
-// between it and the front wall; the drop bin stands against the front wall
-export const COUNTER_POSITION: [number, number, number] = [-cornerX, 0, frontNodeZ - 1.3]
-export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.4]
+// The counter sits 0.8m in front of its spot, with a 0.65m strip for
+// customers between it and the front wall; the drop bin stands against the wall
+export const COUNTER_SIZE: [number, number, number] = [2, 1, 0.5]
+export const COUNTER_POSITION: [number, number, number] = [
+  -cornerX,
+  0,
+  frontNodeZ - 0.8 - COUNTER_SIZE[2] / 2,
+]
+export const FRONT_Z = COUNTER_POSITION[2] - COUNTER_SIZE[2] / 2 - 0.65 - WALL_INNER
+export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.35]
 export const ENTRANCE_X = 0
 
 

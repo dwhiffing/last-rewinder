@@ -4,6 +4,7 @@ import { type Group } from 'three'
 import {
   BACK_Z,
   COUNTER_POSITION,
+  COUNTER_SIZE,
   DROP_BIN_POSITION,
   ENTRANCE_X,
   FRONT_Z,
@@ -22,6 +23,10 @@ const WALL = 0.2
 const halfW = STORE_WIDTH / 2
 const depth = BACK_Z - FRONT_Z
 const centerZ = (BACK_Z + FRONT_Z) / 2
+// Two windows either side of the entrance door, filling the front wall
+const windowWidth = halfW - WALL - 0.3 - 0.7
+const lightX = STORE_WIDTH / 4
+const lightZ = depth / 4
 
 const FLOOR_COLOR = '#3a4a6b'
 const WALL_COLOR = '#d8d2c4'
@@ -59,28 +64,39 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} />
 
       {/* store front: windows and entrance (decorative) */}
-      <Block size={[3.6, 1.4, 0.02]} position={[-2.4, 1.4, frontInner]} color={GLASS} emissive={GLASS_GLOW} />
-      <Block size={[2.2, 1.4, 0.02]} position={[2.6, 1.4, frontInner]} color={GLASS} emissive={GLASS_GLOW} />
-      <Block size={[1.2, 2.2, 0.02]} position={[ENTRANCE_X, 1.1, frontInner]} color={GLASS} emissive={GLASS_GLOW} />
+      {[-1, 1].map((side) => (
+        <Block
+          key={side}
+          size={[windowWidth, 1.2, 0.02]}
+          position={[side * (0.7 + windowWidth / 2), 1.25, frontInner]}
+          color={GLASS}
+          emissive={GLASS_GLOW}
+        />
+      ))}
+      <Block size={[1, 2, 0.02]} position={[ENTRANCE_X, 1, frontInner]} color={GLASS} emissive={GLASS_GLOW} />
       <Label
         text="ENTRANCE"
-        position={[ENTRANCE_X, 2.45, frontInner + 0.01]}
-        width={1.2}
-        height={0.22}
+        position={[ENTRANCE_X, 2.2, frontInner + 0.01]}
+        width={1}
+        height={0.2}
         background={TRIM_COLOR}
         color="#ffd400"
       />
 
       {/* checkout counter, customers stand between it and the front wall */}
       <group name="counter" userData={{ label: 'Counter' }}>
-        <Block size={[2.4, 1.0, 0.6]} position={[cx, 0.5, cz]} color={TRIM_COLOR} />
-        <Block size={[2.5, 0.05, 0.7]} position={[cx, 1.02, cz]} color="#ffd400" />
+        <Block size={COUNTER_SIZE} position={[cx, COUNTER_SIZE[1] / 2, cz]} color={TRIM_COLOR} />
+        <Block
+          size={[COUNTER_SIZE[0] + 0.1, 0.05, COUNTER_SIZE[2] + 0.1]}
+          position={[cx, COUNTER_SIZE[1] + 0.02, cz]}
+          color="#ffd400"
+        />
         {/* placeholder register */}
-        <Block size={[0.4, 0.25, 0.3]} position={[cx + 0.7, 1.17, cz]} color="#222" />
+        <Block size={[0.4, 0.25, 0.3]} position={[cx + 0.6, COUNTER_SIZE[1] + 0.17, cz]} color="#222" />
       </group>
       <Label
         text="CHECKOUT"
-        position={[cx, 1.75, cz - 0.1]}
+        position={[cx, 1.5, cz - 0.1]}
         width={1.4}
         height={0.24}
         background={TRIM_COLOR}
@@ -89,11 +105,11 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* quick drop bin for returned tapes */}
       <group name="dropBin" userData={{ label: 'Quick drop bin' }}>
-        <Block size={[0.7, 0.8, 0.7]} position={[bx, 0.4, bz]} color="#2e7d32" />
+        <Block size={[0.6, 0.7, 0.6]} position={[bx, 0.35, bz]} color="#2e7d32" />
       </group>
       <Label
         text="RETURNS"
-        position={[bx, 1.6, frontInner + 0.01]}
+        position={[bx, 1.5, frontInner + 0.01]}
         width={0.9}
         height={0.2}
         background="#2e7d32"
@@ -111,13 +127,13 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </mesh>
       ))}
 
-      {[-3, 3].flatMap((x) =>
-        [-2, 2].map((z) => (
+      {[-lightX, lightX].flatMap((x) =>
+        [centerZ - lightZ, centerZ + lightZ].map((z) => (
           <FlickerLight
             key={`${x},${z}`}
             position={[x, 0, z]}
             intensity={8}
-            baseDistance={9}
+            baseDistance={8}
             color="#f4f1e6"
             ceilingHeight={STORE_HEIGHT}
             castShadow={false}
