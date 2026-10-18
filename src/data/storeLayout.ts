@@ -19,7 +19,6 @@ export const VIEW_DISTANCE = 1.6
 const shelfTopAngle = Math.atan((SHELF_HEIGHT - EYE_HEIGHT) / VIEW_DISTANCE)
 const shelfFootAngle = Math.atan(EYE_HEIGHT / VIEW_DISTANCE)
 export const CAMERA_PITCH = (shelfTopAngle - shelfFootAngle) / 2
-// Minimum vertical field of view in degrees, with a little margin
 // Slightly tighter than the full shelf height so the tapes fill the view
 export const CAMERA_VFOV = ((shelfTopAngle + shelfFootAngle) * 180 * 0.95) / Math.PI
 
