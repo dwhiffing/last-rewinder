@@ -1,5 +1,3 @@
-import { type Genre } from './tapes'
-
 // All units are metres. x runs left/right, z runs from the store front (-z)
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
@@ -35,14 +33,27 @@ export const FACING_VECTORS: Record<Facing, [number, number]> = {
 const backRowZ = BACK_Z - 0.1 - SHELF_DEPTH / 2
 const midRowZ = 0.5
 
-export const SHELVES: { genre: Genre; position: [number, number, number] }[] = [
-  { genre: 'Action', position: [-4.5, 0, backRowZ] },
-  { genre: 'Comedy', position: [-1.5, 0, backRowZ] },
-  { genre: 'Drama', position: [1.5, 0, backRowZ] },
-  { genre: 'Horror', position: [4.5, 0, backRowZ] },
-  { genre: 'Sci-Fi', position: [-3, 0, midRowZ] },
-  { genre: 'Family', position: [3, 0, midRowZ] },
+export const SHELVES: { id: string; position: [number, number, number] }[] = [
+  { id: 'A', position: [-4.5, 0, backRowZ] },
+  { id: 'B', position: [-1.5, 0, backRowZ] },
+  { id: 'C', position: [1.5, 0, backRowZ] },
+  { id: 'D', position: [4.5, 0, backRowZ] },
+  { id: 'E', position: [-3, 0, midRowZ] },
+  { id: 'F', position: [3, 0, midRowZ] },
 ]
+
+// Every shelf has the same grid of slots, each holding at most one tape
+export const SHELF_TIERS = 5
+export const SLOTS_PER_TIER = 12
+
+export const slotId = (shelf: string, tier: number, slot: number) =>
+  `${shelf}-${tier}-${slot}`
+
+export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
+  Array.from({ length: SHELF_TIERS * SLOTS_PER_TIER }, (_, i) =>
+    slotId(id, Math.floor(i / SLOTS_PER_TIER), i % SLOTS_PER_TIER),
+  ),
+)
 
 export const COUNTER_POSITION: [number, number, number] = [-4.5, 0, -3.2]
 export const DROP_BIN_POSITION: [number, number, number] = [4.5, 0, -4.05]

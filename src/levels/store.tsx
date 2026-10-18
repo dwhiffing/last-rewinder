@@ -99,8 +99,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         background="#2e7d32"
       />
 
-      {SHELVES.map(({ genre, position }) => (
-        <TapeShelf key={genre} genre={genre} position={position} rotation={[0, Math.PI, 0]} />
+      {SHELVES.map(({ id, position }) => (
+        <TapeShelf key={id} id={id} position={position} rotation={[0, Math.PI, 0]} />
       ))}
 
       {/* floor markers showing where you can stand */}

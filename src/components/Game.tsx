@@ -10,7 +10,8 @@ import {
 } from '../entities/controller/system'
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
-import useGameStore, { type SoundMode } from '../stores/gameStore'
+import { GENRE_COLORS, tapeById } from '../data/tapes'
+import useGameStore, { MAX_CARRIED, type SoundMode } from '../stores/gameStore'
 
 function MountScheduler() {
   useFrame(() => {
@@ -88,27 +89,58 @@ function SoundModeToast() {
   )
 }
 
-// What the pointer is over
+function actionHint(kind: string, carried: string[]) {
+  const verb = isTouchDevice ? 'Tap' : 'Click'
+  if (kind === 'tape')
+    return carried.length >= MAX_CARRIED ? 'Hands full' : `${verb} to pick up`
+  if (kind === 'slot') {
+    const top = carried[carried.length - 1]
+    return top ? `${verb} to put down ${tapeById(top).title}` : 'Nothing to put down'
+  }
+  return null
+}
+
+// What the pointer is over, and what clicking it would do
 function LookPrompt() {
-  const lookingAt = useGameStore((s) => s.lookingAt)
-  if (!lookingAt) return null
+  const hovered = useGameStore((s) => s.hovered)
+  const carried = useGameStore((s) => s.carried)
+  if (!hovered) return null
+  const hint = actionHint(hovered.kind, carried)
   return (
     <div className="look-prompt">
-      {lookingAt}
-      <span className="look-hint">
-        {isTouchDevice ? 'tap' : 'click'} to interact
-      </span>
+      {hovered.label}
+      {hint && <span className="look-hint">{hint}</span>}
     </div>
   )
 }
 
-// Placeholder feedback until real interactions exist
-function InteractionToast() {
-  const interaction = useGameStore((s) => s.lastInteraction)
-  if (!interaction) return null
+// Tapes in your hands; the top of the stack is the one you can put down
+function CarriedStack() {
+  const carried = useGameStore((s) => s.carried)
+  return (
+    <div className="carried">
+      <div className="carried-title">
+        Carrying {carried.length}/{MAX_CARRIED}
+      </div>
+      {[...carried].reverse().map((id, i) => {
+        const tape = tapeById(id)
+        return (
+          <div key={id} className={`carried-tape ${i === 0 ? 'top' : ''}`}>
+            <span className="swatch" style={{ background: GENRE_COLORS[tape.genre] }} />
+            {tape.title}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MessageToast() {
+  const message = useGameStore((s) => s.message)
+  if (!message) return null
   return (
     <div
-      key={interaction.at}
+      key={message.at}
       style={{
         color: '#ffd400',
         fontSize: 14,
@@ -116,7 +148,7 @@ function InteractionToast() {
         pointerEvents: 'none',
         animation: 'hudMessageFade 2s ease-out forwards',
       }}>
-      Interacted with {interaction.label}
+      {message.text}
     </div>
   )
 }
@@ -153,10 +185,11 @@ function Hud() {
   return (
     <>
       <LookPrompt />
+      <CarriedStack />
       <NavButtons />
       <div className="ui">
         <SoundModeToast />
-        <InteractionToast />
+        <MessageToast />
       </div>
     </>
   )

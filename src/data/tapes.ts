@@ -90,5 +90,4 @@ export const TAPES: Tape[] = GENRES.flatMap((genre) =>
   })),
 )
 
-export const tapesForGenre = (genre: Genre) =>
-  TAPES.filter((t) => t.genre === genre)
+export const tapeById = (id: string) => TAPES.find((t) => t.id === id)!

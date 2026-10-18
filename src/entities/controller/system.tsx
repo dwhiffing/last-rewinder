@@ -4,7 +4,7 @@ import { Mesh } from '../../shared/traits'
 import useGameStore from '../../stores/gameStore'
 import { setMusicMuted } from '../ambience'
 import { playInteract, resumeAudioContext, setSfxMuted, tickFootstep } from '../sounds'
-import { step, turn } from './nav'
+import { isBusy, step, turn } from './nav'
 import { Controllable, NearestItem } from './traits'
 
 const _raycaster = new Raycaster()
@@ -15,7 +15,7 @@ export const INTERACT_REACH = 3.5
 
 // Object names that can be pointed at and interacted with. Each such object
 // carries a human readable `userData.label`.
-export const INTERACTABLE_NAMES = ['tape', 'shelf', 'counter', 'dropBin']
+export const INTERACTABLE_NAMES = ['tape', 'slot', 'shelf', 'counter', 'dropBin']
 
 export const isTouchDevice =
   typeof window !== 'undefined' &&
@@ -96,10 +96,15 @@ export const controllerInputSystem = (world: World, _delta: number) => {
   for (const key of justPressed) {
     if (KEY_ACTIONS[key]) queuedActions.push(KEY_ACTIONS[key])
   }
-  // Only the first queued action runs; extra presses during a move are dropped
-  const action = queuedActions[0]
-  queuedActions = []
-  if (action && useGameStore.getState().scene === 'game') runAction(action, now)
+  // One action runs at a time; a press during a move or turn waits for it to
+  // finish, and anything beyond that one buffered press is dropped
+  if (useGameStore.getState().scene !== 'game') queuedActions = []
+  if (queuedActions.length && !isBusy(now)) {
+    runAction(queuedActions[0], now)
+    queuedActions = []
+  } else if (queuedActions.length > 1) {
+    queuedActions = queuedActions.slice(0, 1)
+  }
 
   // The camera can move under a still pointer, so check what it's over every frame
   const cam = findCamera(world)
@@ -135,10 +140,21 @@ function runAction(action: NavAction, now: number) {
   }
 }
 
-// Placeholder: real tape/shelf/customer behaviour comes in later steps
 function interact(mesh: any) {
-  playInteract()
-  useGameStore.getState().interact(mesh.userData?.label ?? mesh.name)
+  const store = useGameStore.getState()
+  const { slotId, label } = mesh.userData ?? {}
+  if (mesh.name === 'tape') {
+    const before = store.carried.length
+    store.pickUp(slotId)
+    if (useGameStore.getState().carried.length > before) playInteract()
+  } else if (mesh.name === 'slot') {
+    const before = store.carried.length
+    store.putDown(slotId)
+    if (useGameStore.getState().carried.length < before) playInteract()
+  } else if (mesh.name !== 'shelf') {
+    // Counter and drop bin do nothing yet
+    store.showMessage(`${label ?? mesh.name}: nothing to do here yet`)
+  }
 }
 
 function findCamera(world: World) {
@@ -181,8 +197,10 @@ const updateHovered = (world: World, camera: any) => {
   if (current?.entity !== next.entity || current?.mesh !== next.mesh) {
     world.set(NearestItem, next)
     document.body.style.cursor = best ? 'pointer' : ''
-    useGameStore
-      .getState()
-      .setLookingAt(best ? (best.mesh.userData?.label ?? best.mesh.name) : null)
+    useGameStore.getState().setHovered(
+      best
+        ? { kind: best.mesh.name, label: best.mesh.userData?.label ?? best.mesh.name }
+        : null,
+    )
   }
 }
