@@ -2,7 +2,7 @@
 
 First person video store manager game, built on the SOS (Ludum Dare 59) engine.
 
-Status: engine stripped of the morse gameplay, with a placeholder store (six shelves of mixed-up tapes, checkout counter, quick drop bin). Move between fixed spots, pick tapes up off any shelf and put them down in any empty slot.
+Status: engine stripped of the morse gameplay, with a placeholder store (five shelves of mixed-up tapes: three on the back wall and one on each side wall by the back corners, checkout counter, quick drop bin). Move between fixed spots, pick tapes up off any shelf and put them down in any empty slot.
 
 ## Run
 

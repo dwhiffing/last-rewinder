@@ -29,17 +29,26 @@ export const FACING_VECTORS: Record<Facing, [number, number]> = {
   3: [-1, 0],
 }
 
-// Shelves stand with their backs to +z and face the store front (-z)
-const backRowZ = BACK_Z - 0.1 - SHELF_DEPTH / 2
-const midRowZ = 0.5
+const WALL_INNER = 0.1
+const backRowZ = BACK_Z - WALL_INNER - SHELF_DEPTH / 2
+// Standing spots in front of the back wall shelves
+const backNodeZ = backRowZ - SHELF_DEPTH / 2 - VIEW_DISTANCE
+const sideWallX = STORE_WIDTH / 2 - WALL_INNER - SHELF_DEPTH / 2
+// Corner spots sit VIEW_DISTANCE from both the back shelf and the side shelf
+const cornerX = sideWallX - SHELF_DEPTH / 2 - VIEW_DISTANCE
 
-export const SHELVES: { id: string; position: [number, number, number] }[] = [
-  { id: 'A', position: [-4.5, 0, backRowZ] },
-  { id: 'B', position: [-1.5, 0, backRowZ] },
-  { id: 'C', position: [1.5, 0, backRowZ] },
-  { id: 'D', position: [4.5, 0, backRowZ] },
-  { id: 'E', position: [-3, 0, midRowZ] },
-  { id: 'F', position: [3, 0, midRowZ] },
+// Three shelves against the back wall, plus one on each side wall by the
+// back corners. Rotation turns each shelf's front (local +z) into the room.
+export const SHELVES: {
+  id: string
+  position: [number, number, number]
+  rotationY: number
+}[] = [
+  { id: 'A', position: [-sideWallX, 0, backNodeZ], rotationY: Math.PI / 2 },
+  { id: 'B', position: [-cornerX, 0, backRowZ], rotationY: Math.PI },
+  { id: 'C', position: [0, 0, backRowZ], rotationY: Math.PI },
+  { id: 'D', position: [cornerX, 0, backRowZ], rotationY: Math.PI },
+  { id: 'E', position: [sideWallX, 0, backNodeZ], rotationY: -Math.PI / 2 },
 ]
 
 // Every shelf has the same grid of slots, each holding at most one tape
@@ -55,12 +64,11 @@ export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
   ),
 )
 
-export const COUNTER_POSITION: [number, number, number] = [-4.5, 0, -3.2]
-export const DROP_BIN_POSITION: [number, number, number] = [4.5, 0, -4.05]
+export const COUNTER_POSITION: [number, number, number] = [-cornerX, 0, -3.2]
+export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, -4.05]
 export const ENTRANCE_X = 0
 
-const backNodeZ = backRowZ - SHELF_DEPTH / 2 - VIEW_DISTANCE
-const frontNodeZ = midRowZ - SHELF_DEPTH / 2 - VIEW_DISTANCE
+const frontNodeZ = -1.7
 
 export interface NavNode {
   id: string
@@ -68,19 +76,15 @@ export interface NavNode {
   z: number
 }
 
+// A 3x2 grid: the corner spots see a back shelf ahead and a side shelf to
+// the side, the middle back spot sees shelf C
 export const NODES: NavNode[] = [
-  // front row: counter, sci-fi, entrance, family, drop bin
-  { id: 'counter', x: -4.5, z: frontNodeZ },
-  { id: 'scifi', x: -3, z: frontNodeZ },
+  { id: 'counter', x: -cornerX, z: frontNodeZ },
   { id: 'entrance', x: 0, z: frontNodeZ },
-  { id: 'family', x: 3, z: frontNodeZ },
-  { id: 'dropBin', x: 4.5, z: frontNodeZ },
-  // back row, one in front of each wall shelf plus the centre aisle
-  { id: 'action', x: -4.5, z: backNodeZ },
-  { id: 'comedy', x: -1.5, z: backNodeZ },
-  { id: 'aisle', x: 0, z: backNodeZ },
-  { id: 'drama', x: 1.5, z: backNodeZ },
-  { id: 'horror', x: 4.5, z: backNodeZ },
+  { id: 'dropBin', x: cornerX, z: frontNodeZ },
+  { id: 'cornerLeft', x: -cornerX, z: backNodeZ },
+  { id: 'back', x: 0, z: backNodeZ },
+  { id: 'cornerRight', x: cornerX, z: backNodeZ },
 ]
 
 export const START_NODE = 'entrance'
