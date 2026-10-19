@@ -14,6 +14,7 @@ import useGameStore from '../../stores/gameStore'
 import Block from './block'
 import { WOOD } from './textures'
 import Label from './label'
+import { coveringSlot } from '../../data/storeLayout'
 import SnackBox, { snackBoxSize } from './snackBox'
 import SodaCan, { CAN_HEIGHT } from './sodaCan'
 
@@ -82,6 +83,9 @@ function spineTexture(tapeId: string) {
 // One slot: either a tape you can pick up or an empty space you can fill
 const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; slot: number }) {
   const tapeId = useGameStore((s) => s.slots[id])
+  // the right half of a wide snack box: the box itself takes the clicks
+  const covered = useGameStore((s) => !!coveringSlot(s.slots, id))
+  if (covered) return null
   const position = slotPosition(tier, slot)
 
   if (!tapeId) {
@@ -112,14 +116,16 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   if (snack) {
     // a box standing on the shelf board, front flush with the tape spines
     const [x, y, z] = position
-    const [, h, d] = snackBoxSize(snack.type)
+    const size = snackBoxSize(snack.type, slotSpacing * 2 - 0.01, TAPE_SIZE[1] - 0.01)
+    const [, h, d] = size
     return (
       <SnackBox
         key={tapeId}
         type={snack.type}
+        size={size}
         name="tape"
         userData={{ label, slotId: id }}
-        position={[x, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]}
+        position={[x + slotSpacing / 2, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]}
       />
     )
   }

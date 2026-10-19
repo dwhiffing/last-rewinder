@@ -37,3 +37,6 @@ export const itemName = (id: string) => (isSnack(id) ? snackOf(id).type : tapeBy
 // Box color for any item
 export const itemColor = (id: string, genreColor: (genre: string) => string) =>
   isSnack(id) ? snackOf(id).color : genreColor(tapeById(id).genre)
+
+// Boxed snacks are wide: they fill their slot and the one to its right
+export const isWide = (id: string | null | undefined) => !!id && isSnack(id) && snackOf(id).type !== 'Soda'

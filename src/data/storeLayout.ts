@@ -1,3 +1,4 @@
+import { isWide } from './snacks'
 // All units are metres. x runs left/right, z runs from the store front (-z)
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
@@ -104,6 +105,19 @@ export const SLOTS_PER_TIER = 12
 
 export const slotId = (shelf: string, tier: number, slot: number) =>
   `${shelf}-${tier}-${slot}`
+
+// The slot beside this one on the same tier, or null past the end
+export const neighbourSlot = (id: string, dir: 1 | -1) => {
+  const [shelf, tier, slot] = id.split('-')
+  const next = Number(slot) + dir
+  return next < 0 || next >= SLOTS_PER_TIER ? null : slotId(shelf, Number(tier), next)
+}
+
+// The slot whose wide item spills into this one, if any
+export const coveringSlot = (slots: Record<string, string | null>, id: string) => {
+  const left = neighbourSlot(id, -1)
+  return left && isWide(slots[left]) ? left : null
+}
 
 export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
   Array.from({ length: SHELF_TIERS * SLOTS_PER_TIER }, (_, i) =>

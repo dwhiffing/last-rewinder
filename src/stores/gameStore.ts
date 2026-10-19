@@ -1,8 +1,8 @@
 import { create } from 'zustand'
-import { ALL_SLOT_IDS, SLOTS_PER_TIER, slotId } from '../data/storeLayout'
+import { ALL_SLOT_IDS, coveringSlot, neighbourSlot, SLOTS_PER_TIER, slotId } from '../data/storeLayout'
 import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
-import { isSnack, itemName, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
+import { isSnack, isWide, itemName, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
 import { TAPES, tapeById } from '../data/tapes'
 import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
 
@@ -154,13 +154,19 @@ function initialStock() {
   // A starter stock of 2-3 of each snack, grouped by type along the
   // eye-level tiers of shelf H
   let nextSnackId = 1
-  const snackSlots = [4, 3].flatMap((tier) =>
+  const snackSlots = [4, 3, 2].flatMap((tier) =>
     Array.from({ length: SLOTS_PER_TIER }, (_, i) => slotId('H', tier, i)),
   )
   let next = 0
   for (const type of SNACK_TYPES) {
     const count = 2 + Math.floor(rand() * 2)
-    for (let i = 0; i < count; i++) slots[snackSlots[next++]] = snackId(type, nextSnackId++)
+    for (let i = 0; i < count; i++) {
+      const id = snackId(type, nextSnackId++)
+      // a wide box can't hang off the end of a tier
+      if (isWide(id) && !neighbourSlot(snackSlots[next], 1)) next++
+      slots[snackSlots[next]] = id
+      next += isWide(id) ? 2 : 1
+    }
   }
   return { slots, stockPool: catalogue.slice(STARTING_TAPES), nextSnackId }
 }
@@ -247,8 +253,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   setHovered: (hovered) => set({ hovered }),
   showMessage: (text) => set({ message: { text, at: performance.now() } }),
-  pickUp: (slotId) => {
+  pickUp: (clicked) => {
     const { slots, carried, showMessage } = get()
+    const slotId = coveringSlot(slots, clicked) ?? clicked
     const tapeId = slots[slotId]
     if (!tapeId) return
     if (carried.length >= MAX_CARRIED) {
@@ -261,13 +268,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       coverFlipped: false,
     })
   },
-  putDown: (slotId) => {
+  putDown: (clicked) => {
     const { slots, carried, needsRewind, showMessage } = get()
-    if (slots[slotId]) return
     const tapeId = carried[carried.length - 1]
     if (!tapeId) {
       showMessage('You are not carrying any tapes')
       return
+    }
+    const free = (id: string | null): id is string => !!id && !slots[id] && !coveringSlot(slots, id)
+    let slotId = clicked
+    if (!free(slotId)) return
+    if (isWide(tapeId)) {
+      // needs this slot and the next; at the end of a tier, shift one left
+      const left = neighbourSlot(clicked, -1)
+      if (!free(neighbourSlot(clicked, 1))) {
+        if (free(left)) slotId = left
+        else {
+          playError()
+          showMessage(`${itemName(tapeId)} needs two empty slots`)
+          return
+        }
+      }
     }
     if (needsRewind[tapeId]) {
       playError()
