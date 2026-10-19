@@ -20,15 +20,14 @@ export function Menu() {
   }, [])
 
   return (
-    <div
-      className="menu"
-      onClick={() => setScene('game')}
-      style={{ cursor: 'pointer' }}>
-      <h1 style={{ fontSize: 48, marginBottom: 24 }}>The Last Rewinder</h1>
-      <button
-        style={{ fontSize: 18, padding: '12px 24px', pointerEvents: 'none' }}>
-        Start Game
-      </button>
+    <div className="menu menu-retro" onClick={() => setScene('game')}>
+      {/* yellow torn-ticket title in the style of a 90s video store sign */}
+      <div className="title-ticket">
+        <span className="title-small">THE LAST</span>
+        <span className="title-big">REWINDER</span>
+      </div>
+      <div className="menu-tagline">Be kind. Rewind.</div>
+      <button className="menu-start">Start Game</button>
     </div>
   )
 }

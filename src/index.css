@@ -662,3 +662,67 @@ body {
   0% { opacity: 0.95; }
   100% { opacity: 1; }
 }
+
+/* ---- title screen: video-store blue and ticket yellow ---------------- */
+.menu-retro {
+  cursor: pointer;
+  gap: 28px;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12), transparent 65%),
+    #0d2c8c;
+  color: #ffd400;
+  font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+}
+.title-ticket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px 44px 18px 56px;
+  background: #ffd400;
+  color: #0d2c8c;
+  transform: rotate(-4deg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  /* torn left edge and punched corners of a ticket stub */
+  clip-path: polygon(
+    4% 0, 100% 0, 100% 100%, 4% 100%,
+    0% 92%, 3% 84%, 0% 76%, 3% 68%, 0% 60%, 3% 52%,
+    0% 44%, 3% 36%, 0% 28%, 3% 20%, 0% 12%, 3% 4%
+  );
+}
+.title-small {
+  font-size: clamp(18px, 4vw, 30px);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 4px;
+}
+.title-big {
+  font-size: clamp(44px, 11vw, 96px);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+}
+.menu-tagline {
+  font-size: 16px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+.menu-start {
+  padding: 14px 34px;
+  border: 3px solid #ffd400;
+  border-radius: 6px;
+  background: transparent;
+  color: #ffd400;
+  font: inherit;
+  font-size: 18px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: menuBlink 1.2s steps(2) infinite;
+}
+@keyframes menuBlink {
+  0% { opacity: 1; }
+  100% { opacity: 0.35; }
+}
