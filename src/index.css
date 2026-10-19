@@ -675,7 +675,6 @@ body {
 }
 .title-tape {
   width: min(560px, 88vw);
-  transform: rotate(-2deg);
   filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.55));
   user-select: none;
 }
@@ -695,4 +694,9 @@ body {
 @keyframes menuBlink {
   0% { opacity: 1; }
   100% { opacity: 0.35; }
+}
+
+/* the menu sits above the game layers, so its overlay does too */
+.vhs.vhs-menu {
+  z-index: 1001;
 }

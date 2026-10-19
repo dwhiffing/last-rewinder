@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
+import { VhsOverlay } from './VhsOverlay'
 import { resetNav } from '../entities/controller/nav'
 
 import { PerformanceMonitor, Preload } from '@react-three/drei'
@@ -500,28 +501,6 @@ function DebugButtons() {
     <div className="debug-buttons">
       <button onClick={() => skipDay()}>Skip day</button>
       <button onClick={() => addMoney()}>+$5</button>
-    </div>
-  )
-}
-
-// VHS look over the 3D view: scanlines, grain, a rolling tracking band and a
-// soft vignette. Pure CSS so it costs nothing on the GPU. V toggles it.
-function VhsOverlay() {
-  const [on, setOn] = useState(true)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'v' && !e.repeat) setOn((v) => !v)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-  if (!on) return null
-  return (
-    <div className="vhs" aria-hidden>
-      <div className="vhs-noise" />
-      <div className="vhs-scanlines" />
-      <div className="vhs-tracking" />
-      <div className="vhs-vignette" />
     </div>
   )
 }
