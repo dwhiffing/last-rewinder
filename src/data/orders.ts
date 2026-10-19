@@ -1,6 +1,7 @@
 // Orders that come in on the counter computer. Each order asks for one or
 // more tapes; any tape that fits an item's criteria fills it.
 import { pick, shuffle, type Rand } from './random'
+import { type SnackType } from './snacks'
 import {
   type Decade,
   type Genre,
@@ -44,6 +45,9 @@ export interface Order {
   // asks for a tape the store doesn't own; the right answer is "Not in stock",
   // which orders the tape in for tomorrow
   missing?: boolean
+  // optional add-on: adding this snack before submitting earns its price too
+  snack?: SnackType
+  snackFilled?: string | null
 }
 
 export const ORDER_RULES: Record<OrderKind, { reward: number; seconds: number }> = {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
+import { resetNav } from '../entities/controller/nav'
 
 import { PerformanceMonitor, Preload } from '@react-three/drei'
 import {
@@ -11,8 +12,15 @@ import {
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
 import { type Order } from '../data/orders'
+import { isSnack, itemColor, itemName, SNACK_TYPES, snackOf, SNACKS } from '../data/snacks'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
-import useGameStore, { type GameState, MAX_CARRIED, type SoundMode } from '../stores/gameStore'
+import useGameStore, {
+  type GameState,
+  MAX_CARRIED,
+  RENT_EVERY,
+  SNACK_DAY,
+  type SoundMode,
+} from '../stores/gameStore'
 
 function MountScheduler() {
   useFrame(() => {
@@ -98,25 +106,25 @@ function actionHint(kind: string, s: GameState) {
   if (kind === 'dropBin') {
     if (!s.returnBox.length) return 'Empty'
     if (carried.length >= MAX_CARRIED) return 'Hands full'
-    return `${verb} to take a tape (${s.returnBox.length} inside)`
+    return `${verb} to take one (${s.returnBox.length} inside)`
   }
   if (kind === 'rewinder') {
     if (s.rewinder) {
       const left = s.rewinder.doneAt - s.time
       return left > 0
-        ? `Rewinding ${tapeById(s.rewinder.tapeId).title}: ${Math.ceil(left)}s`
+        ? `Rewinding ${itemName(s.rewinder.tapeId)}: ${Math.ceil(left)}s`
         : top && s.needsRewind[top]
-          ? `${verb} to swap in ${tapeById(top).title}`
-          : `${verb} to take out ${tapeById(s.rewinder.tapeId).title}`
+          ? `${verb} to swap in ${itemName(top)}`
+          : `${verb} to take out ${itemName(s.rewinder.tapeId)}`
     }
-    if (top && s.needsRewind[top]) return `${verb} to rewind ${tapeById(top).title}`
+    if (top && s.needsRewind[top]) return `${verb} to rewind ${itemName(top)}`
     return 'Empty'
   }
   if (kind === 'tape')
     return carried.length >= MAX_CARRIED ? 'Hands full' : `${verb} to pick up`
   if (kind === 'slot') {
-    if (top && s.needsRewind[top]) return `Rewind ${tapeById(top).title} first`
-    return top ? `${verb} to put down ${tapeById(top).title}` : 'Nothing to put down'
+    if (top && s.needsRewind[top]) return `Rewind ${itemName(top)} first`
+    return top ? `${verb} to put down ${itemName(top)}` : 'Nothing to put down'
   }
   return null
 }
@@ -135,6 +143,8 @@ function LookPrompt() {
   )
 }
 
+const genreColor = (g: string) => GENRE_COLORS[g as keyof typeof GENRE_COLORS]
+
 // Tapes in your hands; the top of the stack is the one you can put down
 function CarriedStack() {
   const carried = useGameStore((s) => s.carried)
@@ -145,11 +155,10 @@ function CarriedStack() {
         Carrying {carried.length}/{MAX_CARRIED}
       </div>
       {[...carried].reverse().map((id, i) => {
-        const tape = tapeById(id)
         return (
           <div key={id} className={`carried-tape ${i === 0 ? 'top' : ''}`}>
-            <span className="swatch" style={{ background: GENRE_COLORS[tape.genre] }} />
-            {tape.title}
+            <span className="swatch" style={{ background: itemColor(id, genreColor) }} />
+            {itemName(id)}
             {needsRewind[id] && <span className="rewind-tag">rewind</span>}
           </div>
         )
@@ -217,6 +226,8 @@ function MoneyHud() {
   const orders = useGameStore((s) => s.orders)
   const day = useGameStore((s) => s.day)
   const ordersLeft = useGameStore((s) => s.schedule.length + s.orders.length)
+  const rentDue = useGameStore((s) => s.rentDue)
+  const rentDay = Math.ceil(day / RENT_EVERY) * RENT_EVERY
   const time = useClock()
   const soonest = orders.reduce((min, o) => Math.min(min, o.expiresAt), Infinity)
   const left = soonest - time
@@ -226,6 +237,9 @@ function MoneyHud() {
         Day {day} \u00b7 {ordersLeft} order{ordersLeft === 1 ? '' : 's'} left today
       </div>
       <div className="money">${money}</div>
+      <div className={`rent-line ${money < rentDue ? 'short' : ''}`}>
+        Rent ${rentDue} due end of day {rentDay}
+      </div>
       <div className={`orders-count ${left < 15 ? 'urgent' : ''}`}>
         {orders.length
           ? `${orders.length} order${orders.length > 1 ? 's' : ''} \u00b7 next due ${formatTime(left)}`
@@ -244,6 +258,7 @@ const KIND_LABELS: Record<Order['kind'], string> = {
 function OrderCard({ order, time }: { order: Order; time: number }) {
   const handIn = useGameStore((s) => s.handIn)
   const notInStock = useGameStore((s) => s.notInStock)
+  const submit = useGameStore((s) => s.submitOrder)
   const day = useGameStore((s) => s.day)
   const total = order.expiresAt - order.createdAt
   const left = order.expiresAt - time
@@ -252,7 +267,7 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
     <div
       role="button"
       tabIndex={0}
-      className={`order-card kind-${order.kind}`}
+      className={`order-card kind-${order.kind} ${done === order.items.length ? 'ready' : ''}`}
       onClick={() => handIn(order.id)}>
       <div className="order-head">
         <span className="order-kind">{KIND_LABELS[order.kind]}</span>
@@ -266,11 +281,16 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
           ))}
         </div>
       )}
-      {order.items.length > 1 && (
-        <div className="order-progress">
-          {done}/{order.items.length} tapes handed in
-        </div>
-      )}
+      <div className="order-progress">
+        {order.items.length > 1 ? `Tapes ${done}/${order.items.length}` : done ? 'Tape added' : 'Needs a tape'}
+        {order.snack && (
+          <span className={`order-snack ${order.snackFilled ? 'added' : ''}`}>
+            {order.snackFilled
+              ? `+ ${order.snack} added (+$${SNACKS[order.snack].price})`
+              : `Would like ${order.snack} (+$${SNACKS[order.snack].price})`}
+          </span>
+        )}
+      </div>
       <div className="order-timer">
         <div
           className={left < 15 ? 'urgent' : ''}
@@ -290,6 +310,15 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
             Not in stock
           </button>
         )}
+        <button
+          className="order-submit"
+          disabled={done < order.items.length}
+          onClick={(e) => {
+            e.stopPropagation()
+            submit(order.id)
+          }}>
+          Submit
+        </button>
       </div>
     </div>
   )
@@ -301,6 +330,7 @@ function OrdersScreen() {
   const orders = useGameStore((s) => s.orders)
   const top = useGameStore((s) => s.carried[s.carried.length - 1])
   const close = useGameStore((s) => s.setComputerOpen)
+  const day = useGameStore((s) => s.day)
   const time = useClock()
   if (!open) return null
   return (
@@ -314,8 +344,8 @@ function OrdersScreen() {
         </div>
         <div className="computer-hint">
           {top
-            ? `Click an order to hand in ${tapeById(top).title}`
-            : 'Pick up a tape, then click an order to hand it in'}
+            ? `Click an order to add ${itemName(top)}, then Submit it`
+            : 'Pick up a tape, click an order to add it, then Submit'}
         </div>
         <div className="order-list">
           {orders.length === 0 && <div className="no-orders">Waiting for orders...</div>}
@@ -323,6 +353,30 @@ function OrdersScreen() {
             <OrderCard key={o.id} order={o} time={time} />
           ))}
         </div>
+        {day >= SNACK_DAY && <SnackShop />}
+      </div>
+    </div>
+  )
+}
+
+// Restock snacks; they're delivered straight to the return box
+function SnackShop() {
+  const buy = useGameStore((s) => s.buySnack)
+  const money = useGameStore((s) => s.money)
+  return (
+    <div className="snack-shop">
+      <div className="computer-title">SNACK ORDERS</div>
+      <div className="computer-hint">Delivered to the return box right away</div>
+      <div className="snack-list">
+        {SNACK_TYPES.map((type) => (
+          <button key={type} disabled={money < SNACKS[type].cost} onClick={() => buy(type)}>
+            <span className="swatch" style={{ background: SNACKS[type].color }} />
+            {type}
+            <span className="snack-cost">
+              ${SNACKS[type].cost} (sells ${SNACKS[type].price})
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -335,6 +389,22 @@ function TapeCard() {
   const flip = useGameStore((s) => s.flipCover)
   const unrewound = useGameStore((s) => !!top && !!s.needsRewind[top])
   if (!top) return null
+  if (isSnack(top)) {
+    const snack = snackOf(top)
+    return (
+      <div className="tape-card">
+        <div className="tape-card-inner">
+          <div className="tape-front snack-front" style={{ background: snack.color }}>
+            <div className="tape-actors">Snack</div>
+            <div className="tape-title">{snack.type}</div>
+            <div className="tape-front-foot">
+              <span>Sells for ${snack.price}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   const tape = tapeById(top)
   return (
     <div className="tape-card" onPointerDown={() => flip()} title="Flip (F)">
@@ -390,6 +460,7 @@ function DaySummaryScreen() {
         <div>Orders filled: {summary.filled}</div>
         <div>Orders missed: {summary.missed}</div>
         <div>Earned today: ${summary.earned}</div>
+        {summary.rentPaid !== undefined && <div>Rent paid: ${summary.rentPaid}</div>}
         <div className="day-summary-total">Total: ${money}</div>
         <button onClick={() => next()}>Open day {day + 1}</button>
       </div>
@@ -397,9 +468,47 @@ function DaySummaryScreen() {
   )
 }
 
+function GameOverScreen() {
+  const over = useGameStore((s) => s.gameOver)
+  const money = useGameStore((s) => s.money)
+  const reset = useGameStore((s) => s.resetGame)
+  if (!over) return null
+  return (
+    <div className="day-summary">
+      <div className="day-summary-card">
+        <h2>Evicted!</h2>
+        <div>
+          Rent of ${over.rent} was due at the end of day {over.day}, but you only had ${money}.
+        </div>
+        <button
+          onClick={() => {
+            resetNav()
+            reset()
+          }}>
+          Back to the menu
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Prototype helpers
+function DebugButtons() {
+  const skipDay = useGameStore((s) => s.debugSkipDay)
+  const addMoney = useGameStore((s) => s.debugAddMoney)
+  return (
+    <div className="debug-buttons">
+      <button onClick={() => skipDay()}>Skip day</button>
+      <button onClick={() => addMoney()}>+$5</button>
+    </div>
+  )
+}
+
 function Hud() {
   return (
     <>
+      <DebugButtons />
+      <GameOverScreen />
       <DaySummaryScreen />
       <LookPrompt />
       <CarriedStack />

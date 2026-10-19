@@ -119,7 +119,7 @@ body {
 
 .carried {
   position: fixed;
-  top: 16px;
+  top: 52px;
   left: 16px;
   z-index: 10;
   display: flex;
@@ -495,4 +495,105 @@ body {
 }
 .order-missing:hover {
   background: rgba(255, 107, 107, 0.15);
+}
+
+.order-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-snack {
+  color: #ffd400;
+}
+.order-snack.added {
+  color: #4cff4c;
+  font-weight: bold;
+}
+.order-card.ready {
+  border-color: #4cff4c;
+  background: rgba(76, 255, 76, 0.14);
+}
+.order-foot {
+  gap: 8px;
+}
+.order-foot .order-time {
+  margin-right: auto;
+}
+.order-submit {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  background: #4cff4c;
+  color: #061a06;
+  font: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.order-submit:disabled {
+  background: rgba(76, 255, 76, 0.2);
+  color: rgba(6, 26, 6, 0.6);
+  cursor: default;
+}
+.snack-shop {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(76, 255, 76, 0.5);
+}
+.snack-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.snack-list button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(76, 255, 76, 0.5);
+  border-radius: 6px;
+  background: rgba(76, 255, 76, 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.snack-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.snack-list .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.snack-cost {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.rent-line {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.rent-line.short {
+  color: #ff6b6b;
+  opacity: 1;
+}
+.debug-buttons {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 25;
+  display: flex;
+  gap: 6px;
+}
+.debug-buttons button {
+  padding: 4px 10px;
+  border: 1px dashed #ffd400;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd400;
+  font-size: 12px;
+  cursor: pointer;
 }

@@ -172,3 +172,12 @@ export function neighbourInDirection(
 }
 
 export const nodeById = (id: string) => NODES.find((n) => n.id === id)!
+
+// Small table against the left wall, level with the counter spot, holding the
+// tape rewinder; its top faces into the store (+x)
+export const REWINDER_TABLE_SIZE: [number, number, number] = [0.5, 0.9, 0.8]
+export const REWINDER_TABLE_POSITION: [number, number, number] = [
+  -(STORE_WIDTH / 2 - WALL_INNER - REWINDER_TABLE_SIZE[0] / 2),
+  0,
+  frontNodeZ,
+]

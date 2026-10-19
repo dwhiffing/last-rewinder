@@ -9,6 +9,8 @@ import {
   ENTRANCE_X,
   FRONT_Z,
   NODES,
+  REWINDER_TABLE_POSITION,
+  REWINDER_TABLE_SIZE,
   SHELVES,
   STORE_HEIGHT,
   STORE_WIDTH,
@@ -18,6 +20,7 @@ import Block from '../entities/store/block'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
+import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
 import useGameStore from '../stores/gameStore'
 
@@ -51,6 +54,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
   const [cx, , cz] = COUNTER_POSITION
   const [bx, , bz] = DROP_BIN_POSITION
+  const [rx, , rz] = REWINDER_TABLE_POSITION
   const frontInner = FRONT_Z + WALL / 2 + 0.01
 
   return (
@@ -94,8 +98,17 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
           color="#ffd400"
         />
       </group>
-      <Computer position={[cx + 0.45, COUNTER_SIZE[1] + 0.045, cz]} />
-      <TapeRewinder position={[cx - 0.5, COUNTER_SIZE[1] + 0.045, cz]} />
+      <Computer position={[cx, COUNTER_SIZE[1] + 0.045, cz]} />
+
+      {/* rewinder table against the left wall, between shelf A and the counter */}
+      <Block
+        size={REWINDER_TABLE_SIZE}
+        position={[rx, REWINDER_TABLE_SIZE[1] / 2, rz]}
+        color={TRIM_COLOR}
+      />
+      <group position={[rx, REWINDER_TABLE_SIZE[1], rz]} rotation={[0, Math.PI / 2, 0]}>
+        <TapeRewinder position={[0, 0.005, 0]} />
+      </group>
       <Label
         text="CHECKOUT"
         position={[cx, 1.5, cz - 0.1]}
@@ -184,7 +197,7 @@ function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
           key={id}
           size={[0.21, 0.035, 0.13]}
           position={[x + ((i % 2) - 0.5) * 0.24, y + 0.018 + Math.floor(i / 2) * 0.036, z + ((i % 3) - 1) * 0.04]}
-          color={GENRE_COLORS[tapeById(id).genre]}
+          color={itemColor(id, (g) => GENRE_COLORS[g as keyof typeof GENRE_COLORS])}
         />
       ))}
     </>

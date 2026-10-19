@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { CanvasTexture, SRGBColorSpace } from 'three'
+import { isSnack, snackOf } from '../../data/snacks'
 import { GENRE_COLORS, tapeById } from '../../data/tapes'
 import {
   SHELF_DEPTH,
@@ -39,18 +40,19 @@ function splitInTwo(title: string) {
   return best < 0 ? [title] : [title.slice(0, best), title.slice(best + 1)]
 }
 
-// Spine art: the title running bottom-to-top on the genre color. One texture
-// per tape, made on first use and kept for the whole game.
+// Spine art: the title running bottom-to-top on the genre color (or a snack's
+// type on its color). One texture per item, made on first use and kept.
 const spineTextures = new Map<string, CanvasTexture>()
 function spineTexture(tapeId: string) {
   const cached = spineTextures.get(tapeId)
   if (cached) return cached
-  const tape = tapeById(tapeId)
+  const snack = isSnack(tapeId) ? snackOf(tapeId) : null
+  const tape = snack ? null : tapeById(tapeId)
   const canvas = document.createElement('canvas')
   canvas.width = 96
   canvas.height = 200
   const g = canvas.getContext('2d')!
-  g.fillStyle = GENRE_COLORS[tape.genre]
+  g.fillStyle = snack ? snack.color : GENRE_COLORS[tape!.genre]
   g.fillRect(0, 0, canvas.width, canvas.height)
   // light label band behind the title so it reads on any genre color
   g.fillStyle = '#f4efe2'
@@ -60,7 +62,7 @@ function spineTexture(tapeId: string) {
   g.fillStyle = '#111'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  const title = tape.title.toUpperCase()
+  const title = (snack ? snack.type : tape!.title).toUpperCase()
   const lines = title.length > 12 ? splitInTwo(title) : [title]
   const size = lines.length > 1 ? 26 : 32
   g.font = `bold ${size}px sans-serif`
@@ -90,13 +92,15 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
     )
   }
 
-  const tape = tapeById(tapeId)
+  const snack = isSnack(tapeId) ? snackOf(tapeId) : null
+  const color = snack ? snack.color : GENRE_COLORS[tapeById(tapeId).genre]
+  const label = snack ? `${snack.type} (snack)` : `${tapeById(tapeId).title} (${tapeById(tapeId).genre})`
   return (
     // keyed by tape so a swap mounts a fresh mesh and the hover picks it up
     <mesh
       key={tapeId}
       name="tape"
-      userData={{ label: `${tape.title} (${tape.genre})`, slotId: id }}
+      userData={{ label, slotId: id }}
       castShadow
       position={position}>
       <boxGeometry args={TAPE_SIZE} />
@@ -105,7 +109,7 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
         face === 4 ? (
           <meshStandardMaterial key={face} attach={`material-${face}`} map={spineTexture(tapeId)} roughness={0.6} />
         ) : (
-          <meshStandardMaterial key={face} attach={`material-${face}`} color={GENRE_COLORS[tape.genre]} roughness={0.6} />
+          <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.6} />
         ),
       )}
     </mesh>

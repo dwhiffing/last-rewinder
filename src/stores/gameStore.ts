@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ALL_SLOT_IDS } from '../data/storeLayout'
 import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
+import { isSnack, itemName, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
 import { TAPES, tapeById } from '../data/tapes'
 import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
 
@@ -17,6 +18,17 @@ const STARTING_TAPES = 25
 // Rented tapes come back unrewound in the return box 1 to 3 days later
 const RENTAL_DAYS: [number, number] = [1, 3]
 export const REWIND_SECONDS = 8
+
+// Snacks: from day 3 a free shipment arrives and orders may ask for one
+export const SNACK_DAY = 3
+const FREE_SNACKS_PER_TYPE = 2
+const SNACK_ORDER_CHANCE = 0.4
+
+// Rent is due at the end of every fifth day and goes up each time. Not
+// having enough money then ends the game.
+export const RENT_EVERY = 5
+const FIRST_RENT = 50
+const RENT_INCREASE = 25
 
 export interface HudMessage {
   text: string
@@ -38,6 +50,7 @@ export interface DaySummary {
   filled: number
   missed: number
   earned: number
+  rentPaid?: number
 }
 
 export interface GameState {
@@ -77,6 +90,11 @@ export interface GameState {
   rented: { tapeId: string; returnDay: number }[]
   // the rest of today's orders; the day ends once these and the open ones are done
   schedule: ScheduledKind[]
+  // next id number for a snack item
+  nextSnackId: number
+  rentDue: number
+  // set when rent couldn't be paid
+  gameOver: { day: number; rent: number } | null
   setScene: (scene: 'menu' | 'game') => void
   resetGame: () => void
   toggleLight: (id: string) => void
@@ -88,6 +106,10 @@ export interface GameState {
   useRewinder: () => void
   tick: (delta: number) => void
   handIn: (orderId: number) => void
+  submitOrder: (orderId: number) => void
+  buySnack: (type: SnackType) => void
+  debugSkipDay: () => void
+  debugAddMoney: () => void
   notInStock: (orderId: number) => void
   startNextDay: () => void
   setComputerOpen: (open: boolean) => void
@@ -150,6 +172,9 @@ const freshState = () => ({
   rented: [] as { tapeId: string; returnDay: number }[],
   schedule: daySchedule(orderRand, 1, 0),
   incoming: [] as string[],
+  nextSnackId: 1,
+  rentDue: FIRST_RENT,
+  gameOver: null,
 })
 
 // Tapes in the store that no open order is after. Unrewound ones count, since
@@ -162,8 +187,16 @@ function availableTapes(s: GameState) {
     ...s.returnBox,
     s.rewinder?.tapeId,
   ].filter(Boolean) as string[]
-  return inStore.filter((id) => !reserved.has(id))
+  return inStore.filter((id) => !isSnack(id) && !reserved.has(id))
 }
+
+// Tapes and snacks already added to an order that won't be submitted go back
+// to the return box (the tapes never left, so they're still rewound)
+const attachedItems = (orders: Order[]) =>
+  orders.flatMap((o) => [...o.items.map((i) => i.filled), o.snackFilled]).filter(Boolean) as string[]
+
+const rentalDays = () =>
+  RENTAL_DAYS[0] + Math.floor(orderRand() * (RENTAL_DAYS[1] - RENTAL_DAYS[0] + 1))
 
 const formatMoney = (n: number) => `$${n}`
 
@@ -217,7 +250,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     if (needsRewind[tapeId]) {
       playError()
-      showMessage(`Rewind ${tapeById(tapeId).title} before shelving it`)
+      showMessage(`Rewind ${itemName(tapeId)} before shelving it`)
       return
     }
     set({
@@ -279,7 +312,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       return
     }
     if (!needsRewind[top]) {
-      showMessage(`${tapeById(top).title} is already rewound`)
+      showMessage(
+        isSnack(top) ? "Snacks don't need rewinding" : `${tapeById(top).title} is already rewound`,
+      )
       return
     }
     playInteract()
@@ -293,11 +328,28 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   tick: (delta) => {
     const s = get()
-    if (s.dayOver) return
+    if (s.dayOver || s.gameOver) return
     const time = s.time + delta
 
-    // Closing time: every order for the day has been dealt with
+    // Closing time: every order for the day has been dealt with. Every
+    // fifth day the rent comes out, or the game is over.
     if (!s.schedule.length && !s.orders.length) {
+      if (s.day % RENT_EVERY === 0) {
+        if (s.money < s.rentDue) {
+          set({ time, gameOver: { day: s.day, rent: s.rentDue }, computerOpen: false })
+          return
+        }
+        const today = { ...s.today, rentPaid: s.rentDue }
+        set({
+          time,
+          money: s.money - s.rentDue,
+          rentDue: s.rentDue + RENT_INCREASE,
+          today,
+          dayOver: today,
+          computerOpen: false,
+        })
+        return
+      }
       set({ time, dayOver: s.today, computerOpen: false })
       return
     }
@@ -305,7 +357,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const wasRewinding = s.rewinder && s.rewinder.doneAt > s.time
     if (wasRewinding && s.rewinder!.doneAt <= time) {
       playInteract()
-      s.showMessage(`${tapeById(s.rewinder!.tapeId).title} is rewound`)
+      s.showMessage(`${itemName(s.rewinder!.tapeId)} is rewound`)
     }
 
     const expired = s.orders.filter((o) => o.expiresAt <= time)
@@ -314,8 +366,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const patch: Partial<GameState> = { time }
 
     if (expired.length) {
-      patch.message = { text: `An order ran out of time`, at: performance.now() }
+      const back = attachedItems(expired)
+      patch.message = {
+        text: back.length
+          ? 'An order ran out of time. Its items went to the return box'
+          : 'An order ran out of time',
+        at: performance.now(),
+      }
       patch.today = { ...s.today, missed: s.today.missed + expired.length }
+      if (back.length) patch.returnBox = [...s.returnBox, ...back]
     }
     if (time >= nextOrderAt) {
       const gap = ORDER_GAP[0] + orderRand() * (ORDER_GAP[1] - ORDER_GAP[0])
@@ -344,6 +403,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         patch.schedule = s.schedule.slice(1)
         if (order) {
           if (kind === 'missing') order.missing = true
+          if (kind !== 'missing' && s.day >= SNACK_DAY && orderRand() < SNACK_ORDER_CHANCE) {
+            order.snack = SNACK_TYPES[Math.floor(orderRand() * SNACK_TYPES.length)]
+            order.snackFilled = null
+          }
           orders = [...orders, order]
           nextOrderId++
           playOrderIn()
@@ -357,6 +420,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (nextOrderAt !== s.nextOrderAt) Object.assign(patch, { nextOrderAt, nextOrderId })
     set(patch)
   },
+  // Adds the top carried item to an order. Nothing is paid until the order
+  // is submitted, so a snack can still be added after the tapes.
   handIn: (orderId) => {
     const s = get()
     const order = s.orders.find((o) => o.id === orderId)
@@ -364,7 +429,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!order) return
     if (!top) {
       playError()
-      s.showMessage('Carry the tape you want to hand in')
+      s.showMessage('Carry the item you want to add')
+      return
+    }
+    const carried = s.carried.slice(0, -1)
+    const update = (o: Order) => s.orders.map((x) => (x.id === orderId ? o : x))
+    if (isSnack(top)) {
+      const type = snackOf(top).type
+      if (order.snack !== type || order.snackFilled) {
+        playError()
+        s.showMessage(order.snack ? `They wanted ${order.snack}, not ${type}` : "That order didn't ask for a snack")
+        return
+      }
+      playInteract()
+      set({ carried, coverFlipped: false, orders: update({ ...order, snackFilled: top }) })
       return
     }
     const tape = tapeById(top)
@@ -380,35 +458,68 @@ export const useGameStore = create<GameState>((set, get) => ({
       return
     }
     const items = order.items.map((item, i) => (i === itemIndex ? { ...item, filled: top } : item))
-    const carried = s.carried.slice(0, -1)
-    // The tape leaves the store and comes back to the return box later
-    const rented = [...s.rented, { tapeId: top, returnDay: s.day + RENTAL_DAYS[0] + Math.floor(orderRand() * (RENTAL_DAYS[1] - RENTAL_DAYS[0] + 1)) }]
-    if (items.every((i) => i.filled)) {
-      playCash()
-      set({
-        carried,
-        rented,
-        coverFlipped: false,
-        orders: s.orders.filter((o) => o.id !== orderId),
-        money: s.money + order.reward,
-        ordersFilled: s.ordersFilled + 1,
-        today: {
-          ...s.today,
-          filled: s.today.filled + 1,
-          earned: s.today.earned + order.reward,
-        },
-        message: { text: `Order filled! +${formatMoney(order.reward)}`, at: performance.now() },
-      })
-    } else {
-      playInteract()
-      set({
-        carried,
-        rented,
-        coverFlipped: false,
-        orders: s.orders.map((o) => (o.id === orderId ? { ...o, items } : o)),
-      })
-    }
+    playInteract()
+    set({ carried, coverFlipped: false, orders: update({ ...order, items }) })
   },
+  submitOrder: (orderId) => {
+    const s = get()
+    const order = s.orders.find((o) => o.id === orderId)
+    if (!order) return
+    const missing = order.items.filter((i) => !i.filled).length
+    if (missing) {
+      playError()
+      s.showMessage(`Still needs ${missing} tape${missing > 1 ? 's' : ''}`)
+      return
+    }
+    const snackPay = order.snackFilled ? snackOf(order.snackFilled).price : 0
+    const pay = order.reward + snackPay
+    // The tapes leave the store and come back to the return box later
+    const rented = [
+      ...s.rented,
+      ...order.items.map((i) => ({ tapeId: i.filled!, returnDay: s.day + rentalDays() })),
+    ]
+    playCash()
+    set({
+      rented,
+      orders: s.orders.filter((o) => o.id !== orderId),
+      money: s.money + pay,
+      ordersFilled: s.ordersFilled + 1,
+      today: { ...s.today, filled: s.today.filled + 1, earned: s.today.earned + pay },
+      message: {
+        text: `Order sent! +${formatMoney(pay)}${snackPay ? ` (snack +${formatMoney(snackPay)})` : ''}`,
+        at: performance.now(),
+      },
+    })
+  },
+  // Restocking snacks: paid now, delivered straight to the return box
+  buySnack: (type) => {
+    const s = get()
+    const { cost } = SNACKS[type]
+    if (s.money < cost) {
+      playError()
+      s.showMessage(`Not enough money for ${type}`)
+      return
+    }
+    playInteract()
+    set({
+      money: s.money - cost,
+      returnBox: [...s.returnBox, snackId(type, s.nextSnackId)],
+      nextSnackId: s.nextSnackId + 1,
+      message: { text: `${type} delivered to the return box`, at: performance.now() },
+    })
+  },
+  debugSkipDay: () => {
+    const s = get()
+    if (s.dayOver || s.gameOver) return
+    const back = attachedItems(s.orders)
+    set({
+      orders: [],
+      schedule: [],
+      returnBox: [...s.returnBox, ...back],
+      today: { ...s.today, missed: s.today.missed + s.orders.length },
+    })
+  },
+  debugAddMoney: () => set((s) => ({ money: s.money + 5 })),
   // Saying a title order is out of stock: right if the store doesn't own the
   // tape (it gets ordered in for tomorrow), wrong if it does (the customer
   // leaves and the order is lost)
@@ -451,6 +562,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const day = s.day + 1
     const due = s.rented.filter((r) => r.returnDay <= day).map((r) => r.tapeId)
     const arrivals = s.incoming
+    // The first snack shipment is on the house
+    let { nextSnackId } = s
+    const freeSnacks: string[] = []
+    if (day === SNACK_DAY) {
+      for (const type of SNACK_TYPES)
+        for (let i = 0; i < FREE_SNACKS_PER_TYPE; i++) freeSnacks.push(snackId(type, nextSnackId++))
+    }
     const needsRewind = { ...s.needsRewind }
     for (const id of due) needsRewind[id] = true
     set({
@@ -461,10 +579,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       nextOrderAt: s.time + FIRST_ORDER_AT,
       rented: s.rented.filter((r) => r.returnDay > day),
       incoming: [],
-      returnBox: [...s.returnBox, ...arrivals, ...shuffle(orderRand, due)],
+      returnBox: [...s.returnBox, ...freeSnacks, ...arrivals, ...shuffle(orderRand, due)],
+      nextSnackId,
       needsRewind,
       message: {
-        text: `${arrivals.length} new tape${arrivals.length === 1 ? '' : 's'} and ${due.length} return${due.length === 1 ? '' : 's'} in the return box`,
+        text: `${freeSnacks.length ? 'Free snack shipment! ' : ''}${arrivals.length} new tape${arrivals.length === 1 ? '' : 's'} and ${due.length} return${due.length === 1 ? '' : 's'} in the return box`,
         at: performance.now(),
       },
     })
