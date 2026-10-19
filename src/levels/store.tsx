@@ -446,7 +446,7 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
   const [x, y, z] = position
   return (
     <group name="rewinder" userData={{ label: 'Tape rewinder' }}>
-      <Block size={[0.32, 0.1, 0.24]} position={[x, y + 0.03, z]} color="#222" />
+      <Block size={[0.4, 0.1, 0.24]} position={[x, y + 0.03, z]} color="#222" />
       {rewinder && (
         <Block
           size={[0.21, 0.13, 0.035]}
@@ -454,7 +454,7 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
           color={GENRE_COLORS[tapeById(rewinder.tapeId).genre]}
         />
       )}
-      <mesh position={[x + 0.12, y + 0.05, z + 0.121]}>
+      <mesh position={[x + 0.16, y + 0.05, z + 0.121]}>
         <boxGeometry args={[0.03, 0.03, 0.005]} />
         <meshBasicMaterial color={!rewinder ? '#333' : done ? '#3cff3c' : '#ff3030'} toneMapped={false} />
       </mesh>
