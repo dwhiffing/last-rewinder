@@ -14,6 +14,7 @@ import useGameStore from '../../stores/gameStore'
 import Block from './block'
 import { WOOD } from './textures'
 import Label from './label'
+import SnackBox, { snackBoxSize } from './snackBox'
 import SodaCan, { CAN_HEIGHT } from './sodaCan'
 
 const PANEL = 0.03
@@ -105,6 +106,20 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
         name="tape"
         userData={{ label, slotId: id }}
         position={[x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]}
+      />
+    )
+  }
+  if (snack) {
+    // a box standing on the shelf board, front flush with the tape spines
+    const [x, y, z] = position
+    const [, h, d] = snackBoxSize(snack.type)
+    return (
+      <SnackBox
+        key={tapeId}
+        type={snack.type}
+        name="tape"
+        userData={{ label, slotId: id }}
+        position={[x, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]}
       />
     )
   }
