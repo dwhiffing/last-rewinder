@@ -273,7 +273,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         <mesh key={n.id} position={[n.x, 0.005, n.z]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.18, 24]} />
           {/* lit like the floor so it doesn't glow at full brightness */}
-          <meshStandardMaterial color="#ffd400" transparent opacity={0.5} depthWrite={false} roughness={1} />
+          <meshStandardMaterial color="#ffd400" transparent opacity={0.2} depthWrite={false} roughness={1} />
         </mesh>
       ))}
 
