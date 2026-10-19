@@ -692,6 +692,15 @@ body {
   width: min(560px, 88vw);
   filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.55));
   user-select: none;
+  animation: titlePulse 4s ease-in-out infinite;
+}
+/* gentle breathing scale with a slow rock side to side */
+@keyframes titlePulse {
+  0% { transform: scale(1) rotate(-2deg); }
+  25% { transform: scale(1.05) rotate(0deg); }
+  50% { transform: scale(1) rotate(2deg); }
+  75% { transform: scale(1.05) rotate(0deg); }
+  100% { transform: scale(1) rotate(-2deg); }
 }
 .menu-start {
   padding: 14px 34px;
@@ -704,6 +713,8 @@ body {
   letter-spacing: 2px;
   text-transform: uppercase;
   pointer-events: none;
+  /* sits lower than the centred column without pushing the logo up */
+  transform: translateY(20vh);
   animation: menuBlink 1.2s steps(2) infinite;
 }
 @keyframes menuBlink {
