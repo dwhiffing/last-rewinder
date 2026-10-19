@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2 } from 'three'
-import colorUrl from '../../assets/carpet-color.jpg'
-import normalUrl from '../../assets/carpet-normal.jpg'
-import roughnessUrl from '../../assets/carpet-roughness.jpg'
+import colorUrl from '../../assets/carpet-color.webp'
+import normalUrl from '../../assets/carpet-normal.webp'
+import roughnessUrl from '../../assets/carpet-roughness.webp'
 
 // Metres of floor covered by one tile of the carpet texture
 const TILE = 1.5

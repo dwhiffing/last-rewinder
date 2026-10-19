@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, SRGBColorSpace } from 'three'
-import scuffsUrl from '../../assets/scuffs-color.jpg'
+import scuffsUrl from '../../assets/scuffs-color.webp'
 
 // Wear multiplied over printed signs, loaded once for all of them
 const scuffs = new Image()

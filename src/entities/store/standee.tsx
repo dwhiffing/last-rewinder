@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { DoubleSide, Shape, SRGBColorSpace, TextureLoader } from 'three'
-import maskUrl from '../../assets/standee-mask.png'
+import maskUrl from '../../assets/standee-mask.webp'
 import artUrl from '../../assets/standee.webp'
 
 const HEIGHT = 1.75

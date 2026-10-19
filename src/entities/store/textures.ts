@@ -6,20 +6,20 @@ import {
   TextureLoader,
   type Texture,
 } from 'three'
-import ceilingColor from '../../assets/ceiling-color.jpg'
-import ceilingEmission from '../../assets/ceiling-emission.jpg'
-import ceilingNormal from '../../assets/ceiling-normal.jpg'
-import ceilingRoughness from '../../assets/ceiling-roughness.jpg'
-import wallpaperColor from '../../assets/wallpaper-color.jpg'
-import wallpaperNormal from '../../assets/wallpaper-normal.jpg'
-import wallpaperRoughness from '../../assets/wallpaper-roughness.jpg'
-import nightSkyUrl from '../../assets/night-sky.jpg'
+import ceilingColor from '../../assets/ceiling-color.webp'
+import ceilingEmission from '../../assets/ceiling-emission.webp'
+import ceilingNormal from '../../assets/ceiling-normal.webp'
+import ceilingRoughness from '../../assets/ceiling-roughness.webp'
+import wallpaperColor from '../../assets/wallpaper-color.webp'
+import wallpaperNormal from '../../assets/wallpaper-normal.webp'
+import wallpaperRoughness from '../../assets/wallpaper-roughness.webp'
+import nightSkyUrl from '../../assets/night-sky.webp'
 import glassSmudge from '../../assets/glass-smudge.webp'
-import scuffsColor from '../../assets/scuffs-table-color.jpg'
-import scuffsNormal from '../../assets/scuffs-normal.jpg'
-import woodColor from '../../assets/wood-color.jpg'
-import woodNormal from '../../assets/wood-normal.jpg'
-import woodRoughness from '../../assets/wood-roughness.jpg'
+import scuffsColor from '../../assets/scuffs-table-color.webp'
+import scuffsNormal from '../../assets/scuffs-normal.webp'
+import woodColor from '../../assets/wood-color.webp'
+import woodNormal from '../../assets/wood-normal.webp'
+import woodRoughness from '../../assets/wood-roughness.webp'
 
 export interface TextureSet {
   map?: Texture
