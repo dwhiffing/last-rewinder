@@ -112,7 +112,7 @@ export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
 )
 
 // The counter sits 0.8m in front of its spot, with a 0.65m strip for
-// customers between it and the front wall; the drop bin stands against the wall
+// customers between it and the front wall
 export const COUNTER_SIZE: [number, number, number] = [2, 1, 0.5]
 export const COUNTER_POSITION: [number, number, number] = [
   -cornerX,
@@ -120,7 +120,6 @@ export const COUNTER_POSITION: [number, number, number] = [
   frontNodeZ - 0.8 - COUNTER_SIZE[2] / 2,
 ]
 export const FRONT_Z = COUNTER_POSITION[2] - COUNTER_SIZE[2] / 2 - 0.65 - WALL_INNER
-export const DROP_BIN_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.35]
 export const ENTRANCE_X = 0
 
 
@@ -178,6 +177,13 @@ export const nodeById = (id: string) => NODES.find((n) => n.id === id)!
 export const REWINDER_TABLE_SIZE: [number, number, number] = [0.5, 0.9, 0.8]
 export const REWINDER_TABLE_POSITION: [number, number, number] = [
   -(STORE_WIDTH / 2 - WALL_INNER - REWINDER_TABLE_SIZE[0] / 2),
+  0,
+  frontNodeZ,
+]
+
+// Return box against the right wall, opposite the rewinder table
+export const DROP_BIN_POSITION: [number, number, number] = [
+  STORE_WIDTH / 2 - WALL_INNER - 0.35,
   0,
   frontNodeZ,
 ]

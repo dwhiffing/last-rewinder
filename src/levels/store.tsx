@@ -294,7 +294,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       </group>
       <Label
         text="RETURNS"
-        position={[bx, 1.5, frontInner + 0.01]}
+        position={[halfW - WALL / 2 - 0.01, 1.5, bz]}
+        rotation={[0, -Math.PI / 2, 0]}
         width={0.9}
         height={0.2}
         background="#2e7d32"
