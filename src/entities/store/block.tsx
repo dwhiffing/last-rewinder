@@ -42,6 +42,7 @@ export function Block({
         roughness={textures ? 1 : 0.9}
         map={textures?.map}
         normalMap={textures?.normalMap}
+        normalScale={textures?.normalScale ? [textures.normalScale, textures.normalScale] : undefined}
         roughnessMap={textures?.roughnessMap}
         emissive={emissive ?? '#000'}
         emissiveIntensity={emissive ? 1 : 0}
