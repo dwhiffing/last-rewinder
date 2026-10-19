@@ -18,6 +18,7 @@ export function Label({
   color = '#fff',
   background = '#1d3fbf',
   glow = false,
+  align = 'center',
 }: {
   text: string
   position?: [number, number, number]
@@ -28,6 +29,7 @@ export function Label({
   background?: string
   // screens give off their own light; signs are lit by the room
   glow?: boolean
+  align?: 'center' | 'left'
 }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
@@ -38,9 +40,10 @@ export function Label({
     g.fillRect(0, 0, canvas.width, canvas.height)
     g.fillStyle = color
     g.font = `bold ${Math.round(canvas.height * 0.6)}px sans-serif`
-    g.textAlign = 'center'
+    g.textAlign = align
     g.textBaseline = 'middle'
-    g.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width * 0.92)
+    const x = align === 'left' ? canvas.width * 0.04 : canvas.width / 2
+    g.fillText(text, x, canvas.height / 2, canvas.width * 0.92)
     const tex = new CanvasTexture(canvas)
     tex.colorSpace = SRGBColorSpace
     if (!glow) {
@@ -57,7 +60,7 @@ export function Label({
       else scuffs.addEventListener('load', wear, { once: true })
     }
     return tex
-  }, [text, width, height, color, background, glow])
+  }, [text, width, height, color, background, glow, align])
 
   useEffect(() => () => texture.dispose(), [texture])
 

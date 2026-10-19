@@ -67,7 +67,7 @@ export function Door({
       {/* push plate with its dark PUSH strip, on the inside face */}
       <mesh position={[0, y0 + (midLow + midHigh) / 2, DEPTH / 2 + 0.008]} castShadow>
         <boxGeometry args={[paneW * 0.85, 0.15, 0.016]} />
-        <meshStandardMaterial color="#e2dccd" metalness={0.3} roughness={0.5} />
+        <meshStandardMaterial color={ALUMINIUM} metalness={0.55} roughness={0.45} />
       </mesh>
       <Label
         text="PUSH"
@@ -76,6 +76,7 @@ export function Door({
         height={0.04}
         background="#1c1616"
         color="#f2f2f2"
+        align="left"
       />
 
       {/* door closer on the wall above the frame, its arm reaching to the header
