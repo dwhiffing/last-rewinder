@@ -1,5 +1,12 @@
 import { useEffect, useMemo } from 'react'
 import { CanvasTexture, SRGBColorSpace } from 'three'
+import scuffsUrl from '../../assets/scuffs-color.jpg'
+
+// Wear multiplied over printed signs, loaded once for all of them
+const scuffs = new Image()
+scuffs.src = scuffsUrl
+// metres of sign one copy of the scuff image covers
+const SCUFF_TILE = 1
 
 // Flat text sign drawn to a canvas texture (no font loading needed)
 export function Label({
@@ -36,8 +43,21 @@ export function Label({
     g.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width * 0.92)
     const tex = new CanvasTexture(canvas)
     tex.colorSpace = SRGBColorSpace
+    if (!glow) {
+      const wear = () => {
+        const pattern = g.createPattern(scuffs, 'repeat')!
+        const scale = canvas.width / width / scuffs.width * SCUFF_TILE
+        pattern.setTransform(new DOMMatrix().scale(scale))
+        g.globalCompositeOperation = 'multiply'
+        g.fillStyle = pattern
+        g.fillRect(0, 0, canvas.width, canvas.height)
+        tex.needsUpdate = true
+      }
+      if (scuffs.complete && scuffs.naturalWidth) wear()
+      else scuffs.addEventListener('load', wear, { once: true })
+    }
     return tex
-  }, [text, width, height, color, background])
+  }, [text, width, height, color, background, glow])
 
   useEffect(() => () => texture.dispose(), [texture])
 

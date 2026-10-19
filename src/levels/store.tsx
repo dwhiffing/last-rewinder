@@ -162,13 +162,13 @@ function FlickerPanel({ position }: { position: [number, number, number] }) {
   )
 }
 
-// Yellow top slab overhanging a table by 5cm on each side; `position` is
+// Yellow top slab overhanging a table by 2cm on each side; `position` is
 // the middle of the table's top surface
 const TOP_H = 0.05
 function TableTop({ width, depth, position: [x, y, z] }: { width: number; depth: number; position: [number, number, number] }) {
   return (
     <Block
-      size={[width + 0.1, TOP_H, depth + 0.1]}
+      size={[width + 0.04, TOP_H, depth + 0.04]}
       position={[x, y + TOP_H / 2, z]}
       color="#ffd400"
       textures={SCUFFS}
