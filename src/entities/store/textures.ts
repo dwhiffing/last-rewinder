@@ -6,6 +6,7 @@ import ceilingRoughness from '../../assets/ceiling-roughness.jpg'
 import wallpaperColor from '../../assets/wallpaper-color.jpg'
 import wallpaperNormal from '../../assets/wallpaper-normal.jpg'
 import wallpaperRoughness from '../../assets/wallpaper-roughness.jpg'
+import glassSmudge from '../../assets/glass-smudge.webp'
 import scuffsColor from '../../assets/scuffs-color.jpg'
 import scuffsNormal from '../../assets/scuffs-normal.jpg'
 import woodColor from '../../assets/wood-color.jpg'
@@ -89,4 +90,20 @@ export function scaledBoxGeometry(
     }
   }
   return geo
+}
+
+// Grimy glass: a pale tint that is mostly see-through, with cloudier
+// smudges and splatters. One copy per size of pane, scaled to match.
+const smudgeLoader = load(glassSmudge, true)
+const glassCache = new Map<string, Texture>()
+export function glassTexture(width: number, height: number) {
+  const key = `${width.toFixed(3)}x${height.toFixed(3)}`
+  let tex = glassCache.get(key)
+  if (!tex) {
+    tex = smudgeLoader.clone()
+    tex.repeat.set(width / 1.5, height / 1.5)
+    tex.needsUpdate = true
+    glassCache.set(key, tex)
+  }
+  return tex
 }

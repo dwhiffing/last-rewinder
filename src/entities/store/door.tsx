@@ -1,4 +1,5 @@
 import Label from './label'
+import { glassTexture } from './textures'
 
 // Anodised aluminium shop door, like a strip-mall entrance: a frame around
 // the opening, and one leaf with an upper and lower pane split by a push
@@ -20,7 +21,7 @@ function Pane({ size, position }: { size: [number, number]; position: [number, n
   return (
     <mesh position={position}>
       <boxGeometry args={[size[0], size[1], 0.006]} />
-      <meshStandardMaterial color="#9fc6e8" transparent opacity={0.12} roughness={0.05} depthWrite={false} />
+      <meshStandardMaterial map={glassTexture(size[0], size[1])} transparent roughness={0.1} depthWrite={false} />
     </mesh>
   )
 }

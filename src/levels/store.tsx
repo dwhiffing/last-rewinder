@@ -28,7 +28,7 @@ import {
 } from '../data/storeLayout'
 import Block from '../entities/store/block'
 import Carpet from '../entities/store/carpet'
-import { CEILING, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
+import { CEILING, glassTexture, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
@@ -58,7 +58,6 @@ const frontBaseWidth = halfW - WALL / 2 - 0.5
 const FLOOR_COLOR = '#3a4a6b'
 const WALL_COLOR = '#d8d2c4'
 const TRIM_COLOR = '#1d3fbf'
-const GLASS = '#9fc6e8'
 
 // Openings in the front wall as [x0, x1, y0, y1]: the door, then a window
 // either side of it
@@ -294,7 +293,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       {OPENINGS.slice(1).map(([x0, x1, y0, y1]) => (
         <mesh key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
           <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
-          <meshStandardMaterial color={GLASS} transparent opacity={0.12} roughness={0.05} depthWrite={false} />
+          <meshStandardMaterial map={glassTexture(x1 - x0, y1 - y0)} transparent roughness={0.1} depthWrite={false} />
         </mesh>
       ))}
       <Door position={[ENTRANCE_X, 0, FRONT_Z]} width={DOOR_W} height={DOOR_H} />
