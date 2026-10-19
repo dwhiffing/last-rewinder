@@ -1,10 +1,11 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
-import { type ShaderMaterial, Vector2 } from 'three'
+import { Color, type ShaderMaterial, Vector2 } from 'three'
 
-// Rain running down a window, after the rain glass in turtle-soup's library.
-// Unlike that one this is only the drops: a clear overlay laid just inside
-// the glass so the night outside still shows through.
+// Rain running down a window, matching the rain glass in turtle-soup's
+// library: dark tinted glass with drops and streaks and a faint shimmer.
+// Drops are scaled to that game's 0.6 x 0.8m windows so they look the same
+// size on every pane here.
 const vertexShader = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -16,7 +17,12 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   uniform float uTime;
   uniform vec2 uSize;
+  uniform vec3 uColor;
   varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
 
   float hash21(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
@@ -45,9 +51,19 @@ const fragmentShader = /* glsl */ `
     return head + trail;
   }
 
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+
   void main() {
-    // metres across the glass, so drops are the same size on every pane
-    vec2 uv = vUv * uSize / 1.2;
+    vec2 uv = vUv * uSize / vec2(0.6, 0.8);
     float t = uTime;
     float drops = 0.0;
     drops += drop(uv, t, 0.35, 0.0);
@@ -55,7 +71,11 @@ const fragmentShader = /* glsl */ `
     drops += drop(uv * 0.8 + 0.7, t, 0.45, 3.1);
     drops += drop(uv * 2.0 + 1.2, t, 0.3, 5.3);
     drops = clamp(drops, 0.0, 1.0);
-    gl_FragColor = vec4(vec3(0.75, 0.82, 0.9), drops * 0.4);
+
+    vec3 col = uColor;
+    col += drops * vec3(0.12, 0.15, 0.2);
+    col += noise(uv * 30.0 + t * 0.2) * 0.03;
+    gl_FragColor = vec4(col, 0.75 + drops * 0.15);
   }
 `
 
@@ -70,7 +90,11 @@ export function RainGlass({
 }) {
   const material = useRef<ShaderMaterial>(null)
   const uniforms = useMemo(
-    () => ({ uTime: { value: Math.random() * 100 }, uSize: { value: new Vector2(width, height) } }),
+    () => ({
+      uTime: { value: Math.random() * 100 },
+      uSize: { value: new Vector2(width, height) },
+      uColor: { value: new Color('#1a2a3a') },
+    }),
     [width, height],
   )
   useFrame((_, delta) => {
