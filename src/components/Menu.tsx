@@ -24,7 +24,7 @@ export function Menu() {
       className="menu"
       onClick={() => setScene('game')}
       style={{ cursor: 'pointer' }}>
-      <h1 style={{ fontSize: 48, marginBottom: 24 }}>Blockbuster Manager</h1>
+      <h1 style={{ fontSize: 48, marginBottom: 24 }}>The Last Rewinder</h1>
       <button
         style={{ fontSize: 18, padding: '12px 24px', pointerEvents: 'none' }}>
         Start Game

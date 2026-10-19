@@ -1,4 +1,4 @@
-# Blockbuster Manager
+# The Last Rewinder
 
 First person video store manager game, built on the SOS (Ludum Dare 59) engine.
 
