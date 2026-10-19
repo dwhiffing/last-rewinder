@@ -1,13 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Game from './components/Game'
 import Menu from './components/Menu'
-import {
-  startAmbience,
-  startMenuHowl,
-  stopAmbience,
-  stopMenuHowl,
-} from './entities/ambience'
-import { setMusicMuted } from './entities/ambience'
+import { setMusicMuted, startMusic } from './entities/ambience'
 import { playGameStart, setSfxMuted } from './entities/sounds'
 import useGameStore from './stores/gameStore'
 import './index.css'
@@ -31,14 +25,9 @@ export function App() {
     lastTarget.current = targetScene
 
     setIsFading(true)
-    if (targetScene === 'game') {
-      stopMenuHowl()
-      startAmbience()
-      playGameStart()
-    } else {
-      stopAmbience()
-      startMenuHowl()
-    }
+    // The music runs across the menu and the game
+    startMusic()
+    if (targetScene === 'game') playGameStart()
 
     const toBlack = window.setTimeout(() => {
       setCurrentScene(targetScene)
