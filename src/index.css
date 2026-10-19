@@ -682,9 +682,7 @@ body {
 .menu-retro {
   cursor: pointer;
   gap: 28px;
-  background:
-    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.12), transparent 65%),
-    #0d2c8c;
+  background: #003a7a url('./assets/menu-bg.webp') center / cover no-repeat;
   color: #ffd400;
   font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
 }
