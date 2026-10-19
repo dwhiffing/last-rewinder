@@ -24,7 +24,7 @@ const HEADER = 0.24
 const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
 
 // A VHS box standing spine-out, filling the full height between tier boards
-const TAPE_SIZE: [number, number, number] = [0.085, tierSpacing - PANEL, 0.13]
+const TAPE_SIZE: [number, number, number] = [0.0765, tierSpacing - PANEL, 0.13]
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
 
 const slotPosition = (tier: number, slot: number): [number, number, number] => [
@@ -54,7 +54,29 @@ function spineTexture(tapeId: string) {
   const canvas = document.createElement('canvas')
   canvas.width = 96
   canvas.height = Math.round((canvas.width * TAPE_SIZE[1]) / TAPE_SIZE[0])
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  tex.anisotropy = 4
+  spineTextures.set(tapeId, tex)
+  drawSpine(canvas, snack, tape)
+  // redraw once the marker font has loaded, if it wasn't ready yet
+  if (!document.fonts.check(SPINE_FONT_CHECK)) {
+    document.fonts.load(SPINE_FONT_CHECK).then(() => {
+      drawSpine(canvas, snack, tape)
+      tex.needsUpdate = true
+    })
+  }
+  return tex
+}
+
+const SPINE_FONT_CHECK = '32px "Permanent Marker"'
+function drawSpine(
+  canvas: HTMLCanvasElement,
+  snack: ReturnType<typeof snackOf> | null,
+  tape: ReturnType<typeof tapeById> | null,
+) {
   const g = canvas.getContext('2d')!
+  g.setTransform(1, 0, 0, 1, 0, 0)
   g.fillStyle = snack ? snack.color : GENRE_COLORS[tape!.genre]
   g.fillRect(0, 0, canvas.width, canvas.height)
   // light label band behind the title so it reads on any genre color
@@ -62,22 +84,17 @@ function spineTexture(tapeId: string) {
   g.fillRect(12, 6, canvas.width - 24, canvas.height - 12)
   g.translate(canvas.width / 2, canvas.height / 2)
   g.rotate(-Math.PI / 2)
-  g.fillStyle = '#111'
+  g.fillStyle = '#1328C6'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   const title = (snack ? snack.type : tape!.title).toUpperCase()
   const lines = title.length > 12 ? splitInTwo(title) : [title]
   const size = lines.length > 1 ? 26 : 32
-  g.font = `bold ${size}px sans-serif`
+  g.font = `${size}px "Permanent Marker", sans-serif`
   lines.forEach((line, i) => {
     const y = (i - (lines.length - 1) / 2) * size * 1.05
     g.fillText(line, 0, y, canvas.height - 20)
   })
-  const tex = new CanvasTexture(canvas)
-  tex.colorSpace = SRGBColorSpace
-  tex.anisotropy = 4
-  spineTextures.set(tapeId, tex)
-  return tex
 }
 
 // One slot: either a tape you can pick up or an empty space you can fill
