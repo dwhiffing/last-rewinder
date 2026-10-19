@@ -312,7 +312,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         textures={SCUFFS}
       />
       <TableTop width={REWINDER_TABLE_SIZE[0]} depth={REWINDER_TABLE_SIZE[2]} position={[rx, REWINDER_TABLE_SIZE[1], rz]} />
-      <group position={[rx, REWINDER_TABLE_SIZE[1] + TOP_H, rz]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[rx, REWINDER_TABLE_SIZE[1] + TOP_H, rz]} rotation={[0, Math.PI / 2, 0]} scale={1.2}>
         <TapeRewinder position={[0, 0.005, 0]} />
       </group>
       <Label

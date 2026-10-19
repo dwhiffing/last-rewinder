@@ -52,7 +52,7 @@ function spineTexture(tapeId: string) {
   const snack = isSnack(tapeId) ? snackOf(tapeId) : null
   const tape = snack ? null : tapeById(tapeId)
   const canvas = document.createElement('canvas')
-  canvas.width = 96
+  canvas.width = 128
   canvas.height = Math.round((canvas.width * TAPE_SIZE[1]) / TAPE_SIZE[0])
   const tex = new CanvasTexture(canvas)
   tex.colorSpace = SRGBColorSpace
@@ -77,23 +77,30 @@ function drawSpine(
 ) {
   const g = canvas.getContext('2d')!
   g.setTransform(1, 0, 0, 1, 0, 0)
-  g.fillStyle = snack ? snack.color : GENRE_COLORS[tape!.genre]
-  g.fillRect(0, 0, canvas.width, canvas.height)
-  // light label band behind the title so it reads on any genre color
+  const W = canvas.width
+  const H = canvas.height
+  // black plastic spine with a white sticker label, rounded at the corners
+  g.fillStyle = '#111'
+  g.fillRect(0, 0, W, H)
+  const labelW = W * 0.8
+  const labelH = H * 0.76
   g.fillStyle = '#f4efe2'
-  g.fillRect(12, 6, canvas.width - 24, canvas.height - 12)
-  g.translate(canvas.width / 2, canvas.height / 2)
+  g.beginPath()
+  g.roundRect((W - labelW) / 2, (H - labelH) / 2, labelW, labelH, W * 0.08)
+  g.fill()
+  g.translate(W / 2, H / 2)
   g.rotate(-Math.PI / 2)
   g.fillStyle = '#1328C6'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   const title = (snack ? snack.type : tape!.title).toUpperCase()
   const lines = title.length > 12 ? splitInTwo(title) : [title]
-  const size = lines.length > 1 ? 26 : 32
+  // marker capitals sit well inside their em box, so lines can stack tightly
+  const size = W * (lines.length > 1 ? 0.49 : 0.6)
   g.font = `${size}px "Permanent Marker", sans-serif`
   lines.forEach((line, i) => {
-    const y = (i - (lines.length - 1) / 2) * size * 1.05
-    g.fillText(line, 0, y, canvas.height - 20)
+    const y = (i - (lines.length - 1) / 2) * size * 0.82 + size * 0.06
+    g.fillText(line, 0, y, labelH - W * 0.12)
   })
 }
 
