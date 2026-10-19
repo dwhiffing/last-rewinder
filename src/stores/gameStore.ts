@@ -157,21 +157,38 @@ function initialStock() {
   for (const id of ALL_SLOT_IDS) slots[id] = null
   catalogue.slice(0, STARTING_TAPES).forEach((tapeId, i) => (slots[slotIds[i]] = tapeId))
 
-  // A starter stock of 2-3 of each snack, grouped by type along the
-  // eye-level tiers of shelf H
+  // A starter stock of 2-3 of each snack, scattered randomly across the
+  // eye-level tiers of shelf H and shelf I
   let nextSnackId = 1
-  const snackSlots = [4, 3, 2].flatMap((tier) =>
-    Array.from({ length: SLOTS_PER_TIER }, (_, i) => slotId('H', tier, i)),
+  const snackSlots = shuffle(
+    rand,
+    ['H', 'I'].flatMap((shelf) =>
+      [4, 3, 2].flatMap((tier) =>
+        Array.from({ length: SLOTS_PER_TIER }, (_, i) => slotId(shelf, tier, i)),
+      ),
+    ),
   )
+  const usedSnackSlots = new Set<string>()
   let next = 0
+  const takeSnackSlot = (wide: boolean) => {
+    while (next < snackSlots.length) {
+      const candidate = snackSlots[next++]
+      if (usedSnackSlots.has(candidate)) continue
+      // a wide box needs its own free neighbour, not hanging off the end of a tier
+      const right = neighbourSlot(candidate, 1)
+      if (wide && (!right || usedSnackSlots.has(right))) continue
+      usedSnackSlots.add(candidate)
+      if (right && wide) usedSnackSlots.add(right)
+      return candidate
+    }
+    return null
+  }
   for (const type of SNACK_TYPES) {
     const count = 2 + Math.floor(rand() * 2)
     for (let i = 0; i < count; i++) {
       const id = snackId(type, nextSnackId++)
-      // a wide box can't hang off the end of a tier
-      if (isWide(id) && !neighbourSlot(snackSlots[next], 1)) next++
-      slots[snackSlots[next]] = id
-      next += isWide(id) ? 2 : 1
+      const slot = takeSnackSlot(isWide(id))
+      if (slot) slots[slot] = id
     }
   }
   return { slots, stockPool: catalogue.slice(STARTING_TAPES), nextSnackId }
