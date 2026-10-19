@@ -143,7 +143,7 @@ function LookPrompt() {
   const dark = useGameStore((s) => s.powerOut)
   if (!hovered) return null
   // too dark to read a tape's label
-  const label = dark && hovered.kind === 'tape' && !hovered.label.endsWith('(snack)') ? 'A tape' : hovered.label
+  const label = dark ? 'too dark to see' : hovered.label
   return (
     <div className="look-prompt">
       {label}
