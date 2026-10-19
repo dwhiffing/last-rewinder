@@ -271,10 +271,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   putDown: (clicked) => {
     const { slots, carried, needsRewind, showMessage } = get()
     const tapeId = carried[carried.length - 1]
-    if (!tapeId) {
-      showMessage('You are not carrying any tapes')
-      return
-    }
+    if (!tapeId) return
     const free = (id: string | null): id is string => !!id && !slots[id] && !coveringSlot(slots, id)
     let slotId = clicked
     if (!free(slotId)) return
