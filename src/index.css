@@ -599,7 +599,9 @@ body {
 }
 
 /* ---- VHS overlay ---------------------------------------------------- */
-.game canvas {
+/* On the whole game view, not just the canvas, so the HUD gets the same
+   tube-TV grade as the 3D scene instead of looking crisply overlaid on it */
+.game {
   filter: saturate(1.25) contrast(1.08) brightness(1.02) blur(0.35px);
 }
 .vhs {

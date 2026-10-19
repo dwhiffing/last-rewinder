@@ -42,21 +42,44 @@ function ShaderWarmup() {
   return null
 }
 
+// The store is almost entirely static (shelves, walls, tapes snap into slots
+// instead of animating), so redoing every shadow-casting light's depth pass
+// 60 times a second buys nothing. Refreshing it a few times a second instead
+// keeps shadows accurate within a blink while cutting most of that GPU cost.
+const SHADOW_REFRESH_INTERVAL = .5
+function ShadowThrottle() {
+  const { gl } = useThree()
+  const elapsed = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+  }, [gl])
+  useFrame((_, delta) => {
+    elapsed.current += delta
+    if (elapsed.current < SHADOW_REFRESH_INTERVAL) return
+    elapsed.current = 0
+    gl.shadowMap.needsUpdate = true
+  })
+  return null
+}
+
 export function Game() {
-  const [dpr, setDpr] = useState(1.5)
+  // The VHS/CRT filter already hides fine detail, so there's nothing to gain
+  // from rendering above native resolution - only lower it further if a
+  // weaker device is struggling to keep up
+  const [dpr, setDpr] = useState(1)
   return (
     <div className="game">
-      {/* <Canvas dpr={dpr} shadows frameloop="demand"> */}
       <Canvas dpr={dpr} shadows>
         <PerformanceMonitor
           iterations={10}
           threshold={0.75}
           flipflops={4}
-          onIncline={() => setDpr(2)}
-          onDecline={() => setDpr(1)}
+          onDecline={() => setDpr(0.75)}
         />
         <Preload all />
         <ShaderWarmup />
+        <ShadowThrottle />
         <MountScheduler />
         <KootaSystems>
           <DebugLevel />
