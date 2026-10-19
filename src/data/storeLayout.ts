@@ -127,7 +127,7 @@ export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
 
 // The front wall stands 1.95m in front of the front row of spots, and the
 // counter is pushed back against it
-export const COUNTER_SIZE: [number, number, number] = [1.6, 1, 0.5]
+export const COUNTER_SIZE: [number, number, number] = [1.6, 1, 0.7]
 export const FRONT_Z = frontNodeZ - 0.8 - COUNTER_SIZE[2] - 0.65 - WALL_INNER
 export const COUNTER_POSITION: [number, number, number] = [
   -cornerX,

@@ -85,6 +85,7 @@ const FRONT_WALL_PIECES: [number, number, number, number][] = [
 ]
 
 const RETURN_DESK_H = 0.84
+const MONITOR_DEPTH = 0.22
 const LIGHT_INTENSITY = 1.25
 // Panels (by grid fraction) whose tubes are dead, and one on its way out
 const DEAD_LIGHTS = ['0.625,0.375', '0.125,0.875', '0.875,0.125', '0.375,0.125']
@@ -303,8 +304,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         <Block size={COUNTER_SIZE} position={[cx, COUNTER_SIZE[1] / 2, cz]} color={TRIM_COLOR} textures={SCUFFS} />
         <TableTop width={COUNTER_SIZE[0]} depth={COUNTER_SIZE[2]} position={[cx, COUNTER_SIZE[1], cz]} />
       </group>
-      {/* set back so the monitor touches the wall */}
-      <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz - 0.03]} />
+      {/* monitor pushed back to just short of the wall */}
+      <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz - COUNTER_SIZE[2] / 2 + 0.02 + MONITOR_DEPTH / 2]} />
 
       {/* rewinder table against the left wall, between shelf A and the counter */}
       <Block
@@ -406,11 +407,12 @@ function Computer({ position }: { position: [number, number, number] }) {
   const [x, y, z] = position
   return (
     <group name="computer" userData={{ label: 'Order computer' }}>
-      <Block size={[0.3, 0.04, 0.25]} position={[x, y, z - 0.08]} color="#bbb" />
-      <Block size={[0.46, 0.38, 0.4]} position={[x, y + 0.21, z - 0.08]} color="#d9d4c3" />
+      {/* a slim monitor on a stand, z being its centre */}
+      <Block size={[0.3, 0.04, 0.2]} position={[x, y, z]} color="#bbb" />
+      <Block size={[0.46, 0.38, MONITOR_DEPTH]} position={[x, y + 0.21, z]} color="#d9d4c3" />
       <Label
         text={count ? `${count} ORDER${count > 1 ? 'S' : ''}` : 'NO ORDERS'}
-        position={[x, y + 0.22, z + 0.125]}
+        position={[x, y + 0.22, z + MONITOR_DEPTH / 2 + 0.005]}
         width={0.36}
         height={0.27}
         background={count ? '#0b3d0b' : '#082008'}
@@ -418,7 +420,7 @@ function Computer({ position }: { position: [number, number, number] }) {
         glow
       />
       {/* keyboard */}
-      <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + 0.18]} color="#cfc9b8" />
+      <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + MONITOR_DEPTH / 2 + 0.16]} color="#cfc9b8" />
     </group>
   )
 }
