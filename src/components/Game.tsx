@@ -239,7 +239,7 @@ function MoneyHud() {
   return (
     <div className="money-hud">
       <div className="day-clock">
-        Day {day} \u00b7 {ordersLeft} order{ordersLeft === 1 ? '' : 's'} left today
+        Day {day} · {ordersLeft} order{ordersLeft === 1 ? '' : 's'} left today
       </div>
       <div className="money">${money}</div>
       <div className={`rent-line ${money < rentDue ? 'short' : ''}`}>
