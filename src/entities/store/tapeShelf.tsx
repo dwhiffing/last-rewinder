@@ -12,9 +12,9 @@ import {
 } from '../../data/storeLayout'
 import useGameStore from '../../stores/gameStore'
 import Block from './block'
+import { WOOD } from './textures'
 import Label from './label'
 
-const WOOD = '#6b4a2b'
 const PANEL = 0.03
 // A header panel across the top of the front carries the shelf's sign
 const HEADER = 0.24
@@ -133,7 +133,8 @@ export function TapeShelf({
         <Block
           size={[SHELF_WIDTH, SHELF_HEIGHT, PANEL]}
           position={[0, SHELF_HEIGHT / 2, -SHELF_DEPTH / 2 + PANEL / 2]}
-          color={WOOD}
+          color="#ffffff"
+            textures={WOOD}
         />
         {/* side panels */}
         {[-1, 1].map((side) => (
@@ -141,7 +142,8 @@ export function TapeShelf({
             key={side}
             size={[PANEL, SHELF_HEIGHT, SHELF_DEPTH]}
             position={[side * (SHELF_WIDTH / 2 - PANEL / 2), SHELF_HEIGHT / 2, 0]}
-            color={WOOD}
+            color="#ffffff"
+            textures={WOOD}
           />
         ))}
         {/* tier boards */}
@@ -150,7 +152,8 @@ export function TapeShelf({
             key={i}
             size={[SHELF_WIDTH, PANEL, SHELF_DEPTH]}
             position={[0, i * tierSpacing + PANEL / 2, 0]}
-            color={WOOD}
+            color="#ffffff"
+            textures={WOOD}
           />
         ))}
       </group>

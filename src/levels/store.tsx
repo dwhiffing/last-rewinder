@@ -1,5 +1,5 @@
 import { useWorld } from 'koota/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { type Group } from 'three'
 import {
   BACK_Z,
@@ -15,9 +15,9 @@ import {
   STORE_HEIGHT,
   STORE_WIDTH,
 } from '../data/storeLayout'
-import FlickerLight from '../entities/flickerLight'
 import Block from '../entities/store/block'
 import Carpet from '../entities/store/carpet'
+import { CEILING, PLASTER } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
@@ -31,14 +31,44 @@ const depth = BACK_Z - FRONT_Z
 const centerZ = (BACK_Z + FRONT_Z) / 2
 // Two windows either side of the entrance door, filling the front wall
 const windowWidth = halfW - WALL - 0.3 - 0.7
-const lightX = STORE_WIDTH / 4
-const lightZ = depth / 4
+// The ceiling texture is 6x6 tiles with light panels in a 2x2 pattern. Two
+// copies across each way, offset so the panels land on an even 4x4 grid.
+const CEILING_REPEAT = 2
+const LIGHT_FRACTIONS = [0.125, 0.375, 0.625, 0.875]
 
 const FLOOR_COLOR = '#3a4a6b'
 const WALL_COLOR = '#d8d2c4'
 const TRIM_COLOR = '#1d3fbf'
 const GLASS = '#9fc6e8'
 const GLASS_GLOW = '#3d5a7a'
+
+// Drop-ceiling tiles with glowing light panels, just under the ceiling slab
+function Ceiling() {
+  const maps = useMemo(() => {
+    const { map, normalMap, roughnessMap, emissiveMap } = CEILING
+    return [map, normalMap, roughnessMap, emissiveMap!].map((t) => {
+      const tex = t.clone()
+      tex.repeat.set(CEILING_REPEAT, CEILING_REPEAT)
+      // shift so the panels (at 0.42/0.92 across the image) sit at 0.25/0.75
+      tex.offset.set(0.167, 0.333)
+      tex.needsUpdate = true
+      return tex
+    })
+  }, [])
+  return (
+    <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, STORE_HEIGHT - 0.002, centerZ]}>
+      <planeGeometry args={[STORE_WIDTH, depth]} />
+      <meshStandardMaterial
+        map={maps[0]}
+        normalMap={maps[1]}
+        roughnessMap={maps[2]}
+        emissiveMap={maps[3]}
+        emissive="#ffffff"
+        emissiveIntensity={1.2}
+      />
+    </mesh>
+  )
+}
 
 // Placeholder video store. Front of the store (entrance, counter, drop bin)
 // is at -z, shelves fill the back half.
@@ -64,12 +94,15 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <Block size={[STORE_WIDTH, WALL, depth]} position={[0, -WALL / 2, centerZ]} color={FLOOR_COLOR} />
       <Carpet width={STORE_WIDTH} depth={depth} z={centerZ} />
       {!hideCeiling && (
-        <Block size={[STORE_WIDTH, WALL, depth]} position={[0, STORE_HEIGHT + WALL / 2, centerZ]} color="#eeeeee" />
+        <>
+          <Block size={[STORE_WIDTH, WALL, depth]} position={[0, STORE_HEIGHT + WALL / 2, centerZ]} color="#eeeeee" />
+          <Ceiling />
+        </>
       )}
-      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, BACK_Z]} color={WALL_COLOR} />
-      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, FRONT_Z]} color={WALL_COLOR} />
-      <Block size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} />
-      <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} />
+      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, BACK_Z]} color={WALL_COLOR} textures={PLASTER} />
+      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, FRONT_Z]} color={WALL_COLOR} textures={PLASTER} />
+      <Block size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={PLASTER} />
+      <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={PLASTER} />
 
       {/* store front: windows and entrance (decorative) */}
       {[-1, 1].map((side) => (
@@ -145,17 +178,15 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </mesh>
       ))}
 
-      {[-lightX, lightX].flatMap((x) =>
-        [centerZ - lightZ, centerZ + lightZ].map((z) => (
-          <FlickerLight
-            key={`${x},${z}`}
-            position={[x, 0, z]}
-            intensity={8}
-            baseDistance={8}
-            color="#f4f1e6"
-            ceilingHeight={STORE_HEIGHT}
-            castShadow={false}
-            defaultOn
+      {/* one light under each ceiling light panel */}
+      {LIGHT_FRACTIONS.flatMap((fx) =>
+        LIGHT_FRACTIONS.map((fz) => (
+          <pointLight
+            key={`${fx},${fz}`}
+            position={[-halfW + fx * STORE_WIDTH, STORE_HEIGHT - 0.15, FRONT_Z + fz * depth]}
+            intensity={2.5}
+            distance={5}
+            color="#eef8ff"
           />
         )),
       )}
