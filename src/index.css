@@ -753,3 +753,10 @@ body {
   width: 100% !important;
   height: 230px !important;
 }
+
+/* the on-screen arrows are only for touch screens; keyboards use the keys */
+@media (hover: hover) and (pointer: fine) {
+  .nav-buttons {
+    display: none !important;
+  }
+}
