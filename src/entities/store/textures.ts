@@ -60,7 +60,7 @@ export const WOOD: TextureSet = {
 export const SCUFFS: TextureSet = {
   map: load(scuffsColor, true),
   normalMap: load(scuffsNormal),
-  normalScale: 1,
+  normalScale: 0.7,
   tile: 1.5,
 }
 
