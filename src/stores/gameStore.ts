@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { ALL_SLOT_IDS } from '../data/storeLayout'
-import { generateOrder, matches, type Order } from '../data/orders'
+import { daySchedule, generateOrder, matches, type Order, type OrderKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
 import { TAPES, tapeById } from '../data/tapes'
 import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
@@ -76,6 +76,8 @@ export interface GameState {
   needsRewind: Record<string, boolean>
   rewinder: Rewinder | null
   rented: { tapeId: string; returnDay: number }[]
+  // kinds of the next orders to arrive today; titles once it runs out
+  schedule: OrderKind[]
   setScene: (scene: 'menu' | 'game') => void
   resetGame: () => void
   toggleLight: (id: string) => void
@@ -147,6 +149,7 @@ const freshState = () => ({
   needsRewind: {} as Record<string, boolean>,
   rewinder: null,
   rented: [] as { tapeId: string; returnDay: number }[],
+  schedule: daySchedule(orderRand, 1),
 })
 
 // Tapes in the store that no open order is after. Unrewound ones count, since
@@ -305,14 +308,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (time >= nextOrderAt) {
       const gap = ORDER_GAP[0] + orderRand() * (ORDER_GAP[1] - ORDER_GAP[0])
       if (orders.length < MAX_ORDERS) {
+        const kind = s.schedule[0] ?? 'title'
         const order = generateOrder(
           orderRand,
           nextOrderId,
           time,
           availableTapes({ ...s, orders }),
-          s.ordersFilled,
+          kind,
+          s.day >= 3,
         )
         if (order) {
+          patch.schedule = s.schedule.slice(1)
           orders = [...orders, order]
           nextOrderId++
           playOrderIn()
@@ -390,6 +396,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       day,
       dayOver: null,
+      schedule: daySchedule(orderRand, day),
       today: emptyDay(),
       dayEndsAt: s.time + DAY_SECONDS,
       nextOrderAt: s.time + FIRST_ORDER_AT,

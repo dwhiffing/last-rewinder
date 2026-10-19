@@ -183,22 +183,22 @@ function clueOrder(rand: Rand, tape: Tape, pool: Tape[]) {
 const TITLE_OPENERS = ['Do you have', 'Holding a copy of', 'Need', 'Can I rent']
 
 // `available` is every tape in the store (on shelves or carried) that no
-// other order is already after. `filledCount` grows multi-tape orders.
+// other order is already after. `kind` comes from the day's schedule, and
+// `multiTape` lets title orders ask for two tapes at once.
 export function generateOrder(
   rand: Rand,
   id: number,
   now: number,
   available: string[],
-  filledCount: number,
+  kind: OrderKind,
+  multiTape: boolean,
 ): Order | null {
   if (!available.length) return null
   const pool = available.map(tapeById)
-  const kind = pick(rand, ['title', 'title', 'requirements', 'clue'] as OrderKind[])
   const rule = ORDER_RULES[kind]
   const targets = shuffle(rand, pool)
 
-  // After a few filled orders, title requests can ask for two tapes at once
-  const count = kind === 'title' && filledCount >= 5 && pool.length > 1 && rand() < 0.35 ? 2 : 1
+  const count = kind === 'title' && multiTape && pool.length > 1 && rand() < 0.35 ? 2 : 1
 
   let text = ''
   let tags: string[] = []
@@ -230,4 +230,20 @@ export function generateOrder(
     createdAt: now,
     expiresAt: now + seconds,
   }
+}
+
+// Difficulty ramps by day: day 1 is all title orders, day 2 slips in one
+// clue, and each day after adds another clue and another requirement order.
+// Returns the special orders for the day, spread at random through the first
+// `slots` orders; every other order is a title.
+export const DAY_ORDER_SLOTS = 10
+export function daySchedule(rand: Rand, day: number): OrderKind[] {
+  const clues = Math.max(0, day - 1)
+  const requests = Math.max(0, day - 2)
+  const special = [
+    ...Array<OrderKind>(clues).fill('clue'),
+    ...Array<OrderKind>(requests).fill('requirements'),
+  ].slice(0, DAY_ORDER_SLOTS - 2)
+  const titles = Array<OrderKind>(DAY_ORDER_SLOTS - special.length).fill('title')
+  return shuffle(rand, [...special, ...titles])
 }
