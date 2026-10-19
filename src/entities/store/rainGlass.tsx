@@ -77,7 +77,7 @@ const fragmentShader = /* glsl */ `
     float glint = pow(max(0.0, dot(normalize(n + 1e-4), normalize(vec2(-0.3, 0.8)))), 6.0) * smoothstep(0.3, 0.8, edge);
     col += vec3(0.85, 0.9, 1.0) * glint * 0.5;
 
-    gl_FragColor = vec4(col, m * 0.45);
+    gl_FragColor = vec4(col, m * 0.18);
     #include <colorspace_fragment>
   }
 `
