@@ -130,7 +130,7 @@ function actionHint(kind: string, s: GameState) {
     return carried.length >= MAX_CARRIED ? 'Hands full' : `${verb} to pick up`
   if (kind === 'slot') {
     if (top && s.needsRewind[top]) return `Rewind ${itemName(top)} first`
-    return top ? `${verb} to put down ${itemName(top)}` : 'Nothing to put down'
+    return top ? `${verb} to put down` : 'Nothing to put down'
   }
   return null
 }
@@ -433,7 +433,7 @@ function TapeCard() {
         <directionalLight position={[-0.3, 0.5, -1]} intensity={1.6} />
         <HeldTape tapeId={top} unrewound={unrewound} flipped={flipped} />
       </Canvas>
-      <div className="tape-card-hint">{flipped ? 'Back' : 'Front'}{' \u00b7 click or F to flip'}</div>
+      <div className="tape-card-hint">Click or F to flip</div>
     </div>
   )
 }

@@ -139,7 +139,7 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
 
   const snack = isSnack(tapeId) ? snackOf(tapeId) : null
   const color = snack ? snack.color : GENRE_COLORS[tapeById(tapeId).genre]
-  const label = snack ? `${snack.type} (snack)` : `${tapeById(tapeId).title} (${tapeById(tapeId).genre})`
+  const label = snack ? `${snack.type} (snack)` : tapeById(tapeId).title
   let item
   if (snack?.type === 'Soda') {
     // a can standing on the shelf board
