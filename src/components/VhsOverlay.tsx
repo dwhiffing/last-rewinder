@@ -53,7 +53,7 @@ function TapeArtefacts() {
       const { width: w, height: h } = canvas
       g.clearRect(0, 0, w, h)
 
-      if (Math.random() < 0.12) {
+      if (Math.random() < 0.03) {
         const count = 1 + Math.floor(Math.random() * 3)
         for (let i = 0; i < count; i++) {
           streaks.push({
@@ -65,7 +65,7 @@ function TapeArtefacts() {
           })
         }
       }
-      if (!tear && Math.random() < 0.006) {
+      if (!tear && Math.random() < 0.0015) {
         tear = { y: Math.random() * h, h: 2 + Math.random() * h * 0.06, life: 3 + Math.floor(Math.random() * 6) }
       }
 

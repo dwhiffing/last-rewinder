@@ -618,10 +618,16 @@ body {
   background: repeating-linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.22) 0px,
-    rgba(0, 0, 0, 0.22) 1px,
-    transparent 1px,
-    transparent 3px
+    rgba(0, 0, 0, 0.22) 2px,
+    transparent 2px,
+    transparent 6px
   );
+  /* the lines slowly crawl down the screen */
+  animation: vhsScanCrawl 3s linear infinite;
+}
+@keyframes vhsScanCrawl {
+  from { background-position: 0 0; }
+  to { background-position: 0 6px; }
 }
 .vhs-noise {
   inset: -50% !important;
