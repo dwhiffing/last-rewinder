@@ -52,9 +52,9 @@ export const WOOD: TextureSet = {
 export const SCUFFS: TextureSet = {
   map: load(scuffsColor, true),
   normalMap: load(scuffsNormal),
-  normalScale: 3,
+  normalScale: 1,
   roughnessMap: load(scuffsRoughness),
-  tile: 1,
+  tile: 1.5,
 }
 
 export const CEILING: TextureSet = {

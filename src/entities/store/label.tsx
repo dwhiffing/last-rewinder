@@ -6,7 +6,7 @@ import scuffsUrl from '../../assets/scuffs-color.jpg'
 const scuffs = new Image()
 scuffs.src = scuffsUrl
 // metres of sign one copy of the scuff image covers
-const SCUFF_TILE = 1
+const SCUFF_TILE = 1.5
 
 // Flat text sign drawn to a canvas texture (no font loading needed)
 export function Label({
