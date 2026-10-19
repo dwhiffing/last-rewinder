@@ -192,9 +192,10 @@ export const DROP_BIN_POSITION: [number, number, number] = [
 export const STANDEE_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.35]
 
 // Movie posters on the side walls at the front of the store: one above the
-// rewinder table, two either side of the return box
-export const POSTERS: { id: string; side: -1 | 1; z: number }[] = [
-  { id: 'total-rewind', side: -1, z: frontNodeZ },
-  { id: 'commando-kitchen', side: 1, z: frontNodeZ - 1 },
-  { id: 'little-robot', side: 1, z: frontNodeZ + 1 },
+// rewinder table, two either side of the return box. Each is hung a little
+// off (y is its centre height, tilt in radians) so they look hand-hung.
+export const POSTERS: { id: string; side: -1 | 1; z: number; y: number; tilt: number }[] = [
+  { id: 'total-rewind', side: -1, z: frontNodeZ + 0.06, y: 1.6, tilt: 0.035 },
+  { id: 'commando-kitchen', side: 1, z: frontNodeZ - 1.08, y: 1.56, tilt: -0.05 },
+  { id: 'little-robot', side: 1, z: frontNodeZ + 1.04, y: 1.63, tilt: 0.025 },
 ]

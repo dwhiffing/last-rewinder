@@ -293,11 +293,12 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       <Standee position={STANDEE_POSITION} />
 
-      {POSTERS.map(({ id, side, z }) => (
+      {POSTERS.map(({ id, side, z, y, tilt }) => (
         <Poster
           key={id}
           id={id}
-          position={[side * (halfW - WALL / 2 - 0.005), 1.55, z]}
+          tilt={tilt}
+          position={[side * (halfW - WALL / 2 - 0.005), y, z]}
           rotation={[0, -side * (Math.PI / 2), 0]}
         />
       ))}

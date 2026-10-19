@@ -10,17 +10,20 @@ const POSTER_ART: Record<string, { url: string; aspect: number }> = {
   'little-robot': { url: littleRobot, aspect: 691 / 1024 },
 }
 
-const HEIGHT = 0.88
+const HEIGHT = 1.056
 
 // A movie poster pinned flat to a wall, facing local +z
 export function Poster({
   id,
   position,
   rotation,
+  tilt = 0,
 }: {
   id: string
   position: [number, number, number]
   rotation: [number, number, number]
+  // turn within the wall's plane, in radians
+  tilt?: number
 }) {
   const { url, aspect } = POSTER_ART[id]
   const map = useMemo(() => {
@@ -30,10 +33,12 @@ export function Poster({
     return tex
   }, [url])
   return (
-    <mesh position={position} rotation={rotation} receiveShadow>
-      <planeGeometry args={[HEIGHT * aspect, HEIGHT]} />
-      <meshStandardMaterial map={map} roughness={0.7} />
-    </mesh>
+    <group position={position} rotation={rotation}>
+      <mesh rotation={[0, 0, tilt]} receiveShadow>
+        <planeGeometry args={[HEIGHT * aspect, HEIGHT]} />
+        <meshStandardMaterial map={map} roughness={0.7} />
+      </mesh>
+    </group>
   )
 }
 
