@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { CanvasTexture, SRGBColorSpace } from 'three'
-import { isSnack, snackOf } from '../../data/snacks'
+import { isSnack, isWide, snackOf } from '../../data/snacks'
 import { GENRE_COLORS, tapeById } from '../../data/tapes'
 import {
   SHELF_DEPTH,
@@ -88,65 +88,64 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   if (covered) return null
   const position = slotPosition(tier, slot)
 
+  // Each slot's click box fills its whole cell, so there are no gaps between
+  // slots that ignore the pointer (a wide snack's box covers two cells)
+  const wide = isWide(tapeId)
+  const [x, y, z] = position
+  const hit = (
+    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y, z]}>
+      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), TAPE_SIZE[1], TAPE_SIZE[2]]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  )
+
   if (!tapeId) {
     return (
-      // Invisible but still hit by the pointer ray (material hidden, mesh visible)
-      <mesh key="empty" name="slot" userData={{ label: 'Empty slot', slotId: id }} position={position}>
-        <boxGeometry args={TAPE_SIZE} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
+      <group key="empty" name="slot" userData={{ label: 'Empty slot', slotId: id }}>
+        {hit}
+      </group>
     )
   }
 
   const snack = isSnack(tapeId) ? snackOf(tapeId) : null
   const color = snack ? snack.color : GENRE_COLORS[tapeById(tapeId).genre]
   const label = snack ? `${snack.type} (snack)` : `${tapeById(tapeId).title} (${tapeById(tapeId).genre})`
+  let item
   if (snack?.type === 'Soda') {
     // a can standing on the shelf board
-    const [x, y, z] = position
-    return (
-      <SodaCan
-        key={tapeId}
-        name="tape"
-        userData={{ label, slotId: id }}
-        position={[x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]}
-      />
-    )
-  }
-  if (snack) {
+    item = <SodaCan position={[x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]} />
+  } else if (snack) {
     // a box standing on the shelf board, front flush with the tape spines
-    const [x, y, z] = position
     const size = snackBoxSize(snack.type, slotSpacing * 2 - 0.01, TAPE_SIZE[1] - 0.01)
     const [, h, d] = size
-    return (
+    item = (
       <SnackBox
-        key={tapeId}
         type={snack.type}
         size={size}
-        name="tape"
-        userData={{ label, slotId: id }}
         position={[x + slotSpacing / 2, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]}
       />
     )
+  } else {
+    item = (
+      <mesh castShadow position={position}>
+        <boxGeometry args={TAPE_SIZE} />
+        {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z */}
+        {[0, 1, 2, 3, 4, 5].map((face) =>
+          face === 4 ? (
+            <meshStandardMaterial key={face} attach={`material-${face}`} map={spineTexture(tapeId)} roughness={0.6} />
+          ) : (
+            <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.6} />
+          ),
+        )}
+      </mesh>
+    )
   }
   return (
-    // keyed by tape so a swap mounts a fresh mesh and the hover picks it up
-    <mesh
-      key={tapeId}
-      name="tape"
-      userData={{ label, slotId: id }}
-      castShadow
-      position={position}>
-      <boxGeometry args={TAPE_SIZE} />
-      {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z */}
-      {[0, 1, 2, 3, 4, 5].map((face) =>
-        face === 4 ? (
-          <meshStandardMaterial key={face} attach={`material-${face}`} map={spineTexture(tapeId)} roughness={0.6} />
-        ) : (
-          <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.6} />
-        ),
-      )}
-    </mesh>
+    // keyed by tape so a swap mounts a fresh group and the hover picks it up
+    <group key={tapeId} name="tape" userData={{ label, slotId: id }}>
+      {hit}
+      {item}
+    </group>
   )
 })
 
