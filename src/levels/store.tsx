@@ -34,6 +34,7 @@ import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
 import Poster from '../entities/store/poster'
 import Door from '../entities/store/door'
+import RainGlass from '../entities/store/rainGlass'
 import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
@@ -291,10 +292,14 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* glass in the windows, and the shop door */}
       {OPENINGS.slice(1).map(([x0, x1, y0, y1]) => (
-        <mesh key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
-          <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
-          <meshStandardMaterial map={glassTexture(x1 - x0, y1 - y0)} transparent roughness={0.1} depthWrite={false} />
-        </mesh>
+        <group key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
+          <mesh>
+            <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
+            <meshStandardMaterial map={glassTexture(x1 - x0, y1 - y0)} transparent roughness={0.1} depthWrite={false} />
+          </mesh>
+          {/* rain runs down the outside of the glass */}
+          <RainGlass width={x1 - x0} height={y1 - y0} position={[0, 0, -0.008]} />
+        </group>
       ))}
       <Door position={[ENTRANCE_X, 0, FRONT_Z]} width={DOOR_W} height={DOOR_H} />
 

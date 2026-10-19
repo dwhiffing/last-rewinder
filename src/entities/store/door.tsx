@@ -1,4 +1,5 @@
 import Label from './label'
+import RainGlass from './rainGlass'
 import { glassTexture } from './textures'
 
 // Anodised aluminium shop door, like a strip-mall entrance: a frame around
@@ -19,10 +20,13 @@ function Bar({ size, position }: { size: [number, number, number]; position: [nu
 
 function Pane({ size, position }: { size: [number, number]; position: [number, number, number] }) {
   return (
-    <mesh position={position}>
-      <boxGeometry args={[size[0], size[1], 0.006]} />
-      <meshStandardMaterial map={glassTexture(size[0], size[1])} transparent roughness={0.1} depthWrite={false} />
-    </mesh>
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={[size[0], size[1], 0.006]} />
+        <meshStandardMaterial map={glassTexture(size[0], size[1])} transparent roughness={0.1} depthWrite={false} />
+      </mesh>
+      <RainGlass width={size[0]} height={size[1]} position={[0, 0, -0.006]} />
+    </group>
   )
 }
 
