@@ -32,7 +32,7 @@ export const WALLPAPER: TextureSet = {
   map: load(wallpaperColor, true),
   normalMap: load(wallpaperNormal),
   roughnessMap: load(wallpaperRoughness),
-  tile: 2.6,
+  tile: 3.9,
 }
 
 export const WOOD: TextureSet = {
