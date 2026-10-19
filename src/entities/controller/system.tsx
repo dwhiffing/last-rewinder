@@ -9,6 +9,8 @@ import { Controllable, NearestItem } from './traits'
 
 const _raycaster = new Raycaster()
 const _pointer = new Vector2(0, 0)
+// pointer in -1..1 screen space, for the camera's look-around at shelves
+export const pointerNdc = _pointer
 
 // Max distance from the camera to interact with something
 export const INTERACT_REACH = 3.5
