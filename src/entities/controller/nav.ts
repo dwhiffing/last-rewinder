@@ -69,13 +69,15 @@ export function step(relative: 0 | 1 | 2 | 3, now: number) {
 }
 
 // Turn 90 degrees: +1 clockwise (right), -1 anticlockwise (left)
+// Returns whether the turn started
 export function turn(delta: 1 | -1, now: number) {
-  if (isBusy(now)) return
+  if (isBusy(now)) return false
   settle(now)
   nav.facing = ((nav.facing - delta + 4) % 4) as Facing
   nav.toYaw = nav.fromYaw - (delta * Math.PI) / 2
   nav.startedAt = now
   nav.duration = TURN_MS
+  return true
 }
 
 export function resetNav() {

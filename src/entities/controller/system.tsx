@@ -3,7 +3,7 @@ import { Raycaster, Vector2 } from 'three'
 import { Mesh } from '../../shared/traits'
 import useGameStore from '../../stores/gameStore'
 import { setMusicMuted } from '../ambience'
-import { playInteract, resumeAudioContext, setSfxMuted, tickFootstep } from '../sounds'
+import { playFootstep, playInteract, playWhoosh, resumeAudioContext, setSfxMuted } from '../sounds'
 import { isBusy, nav, step, turn } from './nav'
 import { Controllable, NearestItem } from './traits'
 
@@ -134,17 +134,17 @@ function runAction(action: NavAction, now: number) {
     case 'left': {
       const relative = { forward: 0, right: 1, back: 2, left: 3 }[action] as 0 | 1 | 2 | 3
       if (step(relative, now)) {
-        tickFootstep(true, now)
+        playFootstep()
         useGameStore.getState().setComputerOpen(false)
       }
       break
     }
     case 'turnLeft':
-      turn(-1, now)
+      if (turn(-1, now)) playWhoosh()
       useGameStore.getState().setComputerOpen(false)
       break
     case 'turnRight':
-      turn(1, now)
+      if (turn(1, now)) playWhoosh()
       useGameStore.getState().setComputerOpen(false)
       break
   }

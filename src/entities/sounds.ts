@@ -42,7 +42,11 @@ _stepGain.connect(sfxMaster)
 export function tickFootstep(isMoving: boolean, now: number) {
   if (!isMoving || now - lastStepTime < STEP_INTERVAL_MS) return
   lastStepTime = now
+  playFootstep()
+}
 
+// One footstep, played every time you step to a new spot
+export function playFootstep() {
   const source = ctx.createBufferSource()
   source.buffer = _stepBuffers[_stepPoolIdx % STEP_POOL_SIZE]
   _stepPoolIdx++
@@ -112,4 +116,30 @@ export function playOrderIn() {
   const now = ctx.currentTime
   playTone(1500, now, 0.07, 0.12)
   playTone(1500, now + 0.12, 0.07, 0.12)
+}
+
+// Placeholder: soft whoosh of filtered noise when turning on the spot
+const _whooshBuffer = (() => {
+  const len = Math.floor(ctx.sampleRate * 0.3)
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1
+  return buf
+})()
+export function playWhoosh() {
+  const t = ctx.currentTime
+  const source = ctx.createBufferSource()
+  source.buffer = _whooshBuffer
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.Q.value = 1.2
+  filter.frequency.setValueAtTime(350, t)
+  filter.frequency.exponentialRampToValueAtTime(1400, t + 0.12)
+  filter.frequency.exponentialRampToValueAtTime(500, t + 0.25)
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0, t)
+  gain.gain.linearRampToValueAtTime(0.22, t + 0.08)
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28)
+  source.connect(filter).connect(gain).connect(sfxMaster)
+  source.start(t)
 }
