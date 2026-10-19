@@ -766,3 +766,12 @@ body {
   src: url('./assets/itc-machine-bold.otf') format('opentype');
   font-weight: bold;
 }
+
+.held-card {
+  width: 190px;
+}
+.held-art {
+  display: block;
+  width: 100% !important;
+  height: 260px !important;
+}

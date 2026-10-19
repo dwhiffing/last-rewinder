@@ -16,6 +16,7 @@ import { KootaSystems } from '../providers'
 import { type Order } from '../data/orders'
 import SnackBox, { snackBoxSize } from '../entities/store/snackBox'
 import SodaCan from '../entities/store/sodaCan'
+import HeldTape from '../entities/store/heldTape'
 import { isSnack, itemColor, itemName, SNACK_TYPES, type SnackType, snackOf, SNACKS } from '../data/snacks'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
 import useGameStore, {
@@ -424,42 +425,14 @@ function TapeCard() {
       </div>
     )
   }
-  const tape = tapeById(top)
   return (
-    <div className="tape-card" onPointerDown={() => flip()} title="Flip (F)">
-      <div className={`tape-card-inner ${flipped ? 'flipped' : ''}`}>
-        <div className="tape-front" style={{ background: GENRE_COLORS[tape.genre] }}>
-          {unrewound && <div className="rewind-sticker">Please rewind</div>}
-          <div className="tape-actors">{tape.actors.join(' \u00b7 ')}</div>
-          <div className="tape-title">{tape.title}</div>
-          <div className="tape-front-foot">
-            <span className="tape-rating" style={{ background: RATING_COLORS[tape.rating] }}>
-              {tape.rating}
-            </span>
-            <span className="tape-year">{tape.year}</span>
-          </div>
-        </div>
-        <div className="tape-back">
-          <div className="tape-back-title">{tape.title}</div>
-          <p className="tape-bio">{tape.bio}</p>
-          <dl className="tape-stats">
-            <dt>Genre</dt>
-            <dd>{tape.genre}</dd>
-            <dt>Rated</dt>
-            <dd>{tape.rating}</dd>
-            <dt>Released</dt>
-            <dd>
-              {tape.year} ({tape.decade})
-            </dd>
-            <dt>Runtime</dt>
-            <dd>
-              {tape.minutes} min ({lengthOf(tape.minutes)})
-            </dd>
-            <dt>Starring</dt>
-            <dd>{tape.actors.join(', ')}</dd>
-          </dl>
-        </div>
-      </div>
+    <div className="tape-card held-card" onPointerDown={() => flip()} title="Flip (F)">
+      <Canvas className="held-art" camera={{ position: [0, 0, 0.42], fov: 40 }} dpr={[1, 2]}>
+        <ambientLight intensity={1.3} />
+        <directionalLight position={[0.3, 0.5, 1]} intensity={1.6} />
+        <directionalLight position={[-0.3, 0.5, -1]} intensity={1.6} />
+        <HeldTape tapeId={top} unrewound={unrewound} flipped={flipped} />
+      </Canvas>
       <div className="tape-card-hint">{flipped ? 'Back' : 'Front'}{' \u00b7 click or F to flip'}</div>
     </div>
   )

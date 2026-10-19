@@ -46,7 +46,7 @@ function splitInTwo(title: string) {
 // Spine art: the title running bottom-to-top on the genre color (or a snack's
 // type on its color). One texture per item, made on first use and kept.
 const spineTextures = new Map<string, CanvasTexture>()
-function spineTexture(tapeId: string) {
+export function spineTexture(tapeId: string) {
   const cached = spineTextures.get(tapeId)
   if (cached) return cached
   const snack = isSnack(tapeId) ? snackOf(tapeId) : null
