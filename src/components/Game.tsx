@@ -105,7 +105,9 @@ function actionHint(kind: string, s: GameState) {
       const left = s.rewinder.doneAt - s.time
       return left > 0
         ? `Rewinding ${tapeById(s.rewinder.tapeId).title}: ${Math.ceil(left)}s`
-        : `${verb} to take out ${tapeById(s.rewinder.tapeId).title}`
+        : top && s.needsRewind[top]
+          ? `${verb} to swap in ${tapeById(top).title}`
+          : `${verb} to take out ${tapeById(s.rewinder.tapeId).title}`
     }
     if (top && s.needsRewind[top]) return `${verb} to rewind ${tapeById(top).title}`
     return 'Empty'

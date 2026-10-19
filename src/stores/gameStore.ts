@@ -16,8 +16,8 @@ const ORDER_GAP: [number, number] = [12, 20]
 export const DAY_SECONDS = 180
 const STARTING_TAPES = 10
 const NEW_TAPES_PER_DAY = 5
-// Rented tapes come back unrewound in the return box this many days later
-const RENTAL_DAYS = 1
+// Rented tapes come back unrewound in the return box 1 to 3 days later
+const RENTAL_DAYS: [number, number] = [1, 3]
 export const REWIND_SECONDS = 8
 
 export interface HudMessage {
@@ -252,6 +252,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         showMessage(`Still rewinding (${Math.ceil(left)}s)`)
         return
       }
+      // Holding a tape that needs rewinding swaps it with the finished one
+      const top = carried[carried.length - 1]
+      if (top && needsRewind[top]) {
+        playInteract()
+        const { [top]: _, ...rest } = needsRewind
+        set({
+          carried: [...carried.slice(0, -1), rewinder.tapeId],
+          rewinder: { tapeId: top, doneAt: time + REWIND_SECONDS },
+          needsRewind: rest,
+          coverFlipped: false,
+        })
+        return
+      }
       if (carried.length >= MAX_CARRIED) {
         showMessage(`Your hands are full (${MAX_CARRIED} tapes)`)
         return
@@ -357,7 +370,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const items = order.items.map((item, i) => (i === itemIndex ? { ...item, filled: top } : item))
     const carried = s.carried.slice(0, -1)
     // The tape leaves the store and comes back to the return box later
-    const rented = [...s.rented, { tapeId: top, returnDay: s.day + RENTAL_DAYS }]
+    const rented = [...s.rented, { tapeId: top, returnDay: s.day + RENTAL_DAYS[0] + Math.floor(orderRand() * (RENTAL_DAYS[1] - RENTAL_DAYS[0] + 1)) }]
     if (items.every((i) => i.filled)) {
       playCash()
       set({
