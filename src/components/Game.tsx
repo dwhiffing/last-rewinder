@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
-import { MusicButton } from './MusicButton'
 import { VhsOverlay } from './VhsOverlay'
 import { resetNav } from '../entities/controller/nav'
 
@@ -502,7 +501,6 @@ function DebugButtons() {
     <div className="debug-buttons">
       <button onClick={() => skipDay()}>Skip day</button>
       <button onClick={() => addMoney()}>+$5</button>
-      <MusicButton />
     </div>
   )
 }

@@ -709,17 +709,3 @@ html,
 body {
   -webkit-touch-callout: none;
 }
-
-.menu-music {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 1002;
-  padding: 4px 10px;
-  border: 1px dashed #ffd400;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.4);
-  color: #ffd400;
-  font-size: 12px;
-  cursor: pointer;
-}

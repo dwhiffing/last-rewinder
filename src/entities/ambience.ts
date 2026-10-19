@@ -1,7 +1,6 @@
-// Background music: a low drone that's always there, plus one of a few
-// VHS-tape flavoured layers on top. The music starts on the first input on
-// the menu and keeps playing into the game. The layer can be switched while
-// playing so we can compare versions.
+// Background music: a low drone plus a worn-out synth pad warbling like an
+// old tape, over soft brown-noise tape rumble. It starts on the first input
+// on the menu and keeps playing into the game.
 const ctx = new AudioContext()
 
 const master = ctx.createGain()
@@ -34,21 +33,20 @@ reverbGain.gain.value = 0.5
 reverb.connect(reverbGain)
 reverbGain.connect(master)
 
-function noiseBuffer(seconds: number) {
+// Brown noise: white noise run through a leaky integrator, so it's all low
+// rumble with no harsh highs
+function brownNoiseBuffer(seconds: number) {
   const len = Math.floor(ctx.sampleRate * seconds)
   const buffer = ctx.createBuffer(1, len, ctx.sampleRate)
   const data = buffer.getChannelData(0)
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1
+  let last = 0
+  for (let i = 0; i < len; i++) {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
+    data[i] = last * 3.5
+  }
   return buffer
 }
-const NOISE = noiseBuffer(4)
-
-function loopNoise() {
-  const source = ctx.createBufferSource()
-  source.buffer = NOISE
-  source.loop = true
-  return source
-}
+const BROWN_NOISE = brownNoiseBuffer(6)
 
 // Tape "wow and flutter": a slow and a fast wobble that can be wired into any
 // oscillator's detune (in cents)
@@ -120,123 +118,22 @@ function every(fn: () => number) {
   }
 }
 
-// Steady high tape hiss
-function hiss(bus: AudioNode, level: number) {
-  const source = loopNoise()
-  const hp = ctx.createBiquadFilter()
-  hp.type = 'highpass'
-  hp.frequency.value = 3500
+// Soft brown-noise tape rumble
+function rumble(bus: AudioNode, level: number) {
+  const source = ctx.createBufferSource()
+  source.buffer = BROWN_NOISE
+  source.loop = true
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
-  lp.frequency.value = 9000
+  lp.frequency.value = 1200
   const gain = ctx.createGain()
   gain.gain.value = level
-  source.connect(hp).connect(lp).connect(gain).connect(bus)
+  source.connect(lp).connect(gain).connect(bus)
   source.start()
   return () => source.stop()
 }
 
-// Short burst of filtered noise: clicks, clunks and thumps of the deck
-function noiseHit(bus: AudioNode, t: number, freq: number, dur: number, level: number, type: BiquadFilterType = 'lowpass') {
-  const source = ctx.createBufferSource()
-  source.buffer = NOISE
-  const filter = ctx.createBiquadFilter()
-  filter.type = type
-  filter.frequency.value = freq
-  const gain = ctx.createGain()
-  gain.gain.setValueAtTime(level, t)
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  source.connect(filter).connect(gain).connect(bus)
-  source.start(t, Math.random() * 3)
-  source.stop(t + dur + 0.05)
-}
-
-// 1) Tape hiss: hiss, the odd dropout where the sound dips, and soft
-// head-switching ticks
-function tapeHissLayer(bus: GainNode): Layer {
-  const stopHiss = hiss(bus, 0.05)
-  const stopDropouts = every(() => {
-    const t = ctx.currentTime
-    const dip = 0.15 + Math.random() * 0.4
-    master.gain.cancelScheduledValues(t)
-    const level = musicMuted ? 0 : MUSIC_GAIN
-    master.gain.setValueAtTime(level, t)
-    master.gain.linearRampToValueAtTime(level * 0.35, t + 0.03)
-    master.gain.linearRampToValueAtTime(level, t + dip)
-    return 6 + Math.random() * 10
-  })
-  const stopTicks = every(() => {
-    const t = ctx.currentTime
-    noiseHit(bus, t, 2500, 0.02, 0.05, 'bandpass')
-    return 1.5 + Math.random() * 4
-  })
-  return {
-    stop: () => {
-      stopHiss()
-      stopDropouts()
-      stopTicks()
-    },
-  }
-}
-
-// 2) Machine room: mains hum from the deck motor, mechanical clunks and the
-// whirr of a tape rewinding somewhere
-function machineLayer(bus: GainNode): Layer {
-  const stopHiss = hiss(bus, 0.02)
-  const hum = ctx.createOscillator()
-  hum.type = 'sawtooth'
-  hum.frequency.value = 60
-  const humFilter = ctx.createBiquadFilter()
-  humFilter.type = 'lowpass'
-  humFilter.frequency.value = 240
-  const humGain = ctx.createGain()
-  humGain.gain.value = 0.025
-  hum.connect(humFilter).connect(humGain).connect(bus)
-  hum.start()
-
-  const stopClunks = every(() => {
-    const t = ctx.currentTime
-    // a clunk is a low thump followed by a little latch click
-    noiseHit(bus, t, 160, 0.18, 0.35)
-    noiseHit(bus, t + 0.09, 1800, 0.03, 0.08, 'bandpass')
-    return 5 + Math.random() * 8
-  })
-  const stopRewinds = every(() => {
-    const t = ctx.currentTime
-    const dur = 2 + Math.random() * 2
-    // rewinding: a whirr that speeds up then stops with a clack
-    const whirr = ctx.createOscillator()
-    whirr.type = 'sawtooth'
-    whirr.frequency.setValueAtTime(90, t)
-    whirr.frequency.exponentialRampToValueAtTime(420, t + dur)
-    const filter = ctx.createBiquadFilter()
-    filter.type = 'bandpass'
-    filter.frequency.setValueAtTime(400, t)
-    filter.frequency.exponentialRampToValueAtTime(1600, t + dur)
-    filter.Q.value = 3
-    const gain = ctx.createGain()
-    gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(0.03, t + 0.4)
-    gain.gain.setValueAtTime(0.03, t + dur - 0.05)
-    gain.gain.linearRampToValueAtTime(0, t + dur)
-    whirr.connect(filter).connect(gain).connect(bus)
-    gain.connect(reverb)
-    whirr.start(t)
-    whirr.stop(t + dur)
-    noiseHit(bus, t + dur, 1200, 0.05, 0.15, 'bandpass')
-    return 14 + Math.random() * 14
-  })
-  return {
-    stop: () => {
-      stopHiss()
-      hum.stop()
-      stopClunks()
-      stopRewinds()
-    },
-  }
-}
-
-// 3) Warped synth: a slow, worn-out pad playing an 80s chord loop through a
+// Warped synth: a slow, worn-out pad playing an 80s chord loop through a
 // dull, warbling tape
 const CHORDS = [
   [220, 261.6, 329.6], // Am
@@ -245,7 +142,7 @@ const CHORDS = [
   [196, 246.9, 293.7], // G
 ]
 function warpedSynthLayer(bus: GainNode): Layer {
-  const stopHiss = hiss(bus, 0.035)
+  const stopRumble = rumble(bus, 0.08)
   const wobble = wowFlutter(18, 4)
   const tone = ctx.createBiquadFilter()
   tone.type = 'lowpass'
@@ -278,58 +175,17 @@ function warpedSynthLayer(bus: GainNode): Layer {
   })
   return {
     stop: () => {
-      stopHiss()
+      stopRumble()
       stopChords()
       wobble.stop()
     },
   }
 }
 
-export const MUSIC_VARIANTS = [
-  { name: 'Tape hiss', make: tapeHissLayer },
-  { name: 'Machine room', make: machineLayer },
-  { name: 'Warped synth', make: warpedSynthLayer },
-]
-
-let variant = 0
-let layer: { bus: GainNode; layer: Layer } | null = null
-const listeners = new Set<() => void>()
-
 function startLayer() {
   const bus = ctx.createGain()
-  bus.gain.setValueAtTime(0, ctx.currentTime)
-  bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.5)
   bus.connect(master)
-  layer = { bus, layer: MUSIC_VARIANTS[variant].make(bus) }
-}
-
-function stopLayer() {
-  if (!layer) return
-  const old = layer
-  layer = null
-  old.bus.gain.cancelScheduledValues(ctx.currentTime)
-  old.bus.gain.setValueAtTime(old.bus.gain.value, ctx.currentTime)
-  old.bus.gain.linearRampToValueAtTime(0, ctx.currentTime + 1)
-  window.setTimeout(() => {
-    old.layer.stop()
-    old.bus.disconnect()
-  }, 1100)
-}
-
-export const getMusicVariant = () => variant
-
-export function onMusicVariantChange(fn: () => void) {
-  listeners.add(fn)
-  return () => void listeners.delete(fn)
-}
-
-export function cycleMusicVariant() {
-  variant = (variant + 1) % MUSIC_VARIANTS.length
-  if (running) {
-    stopLayer()
-    startLayer()
-  }
-  listeners.forEach((fn) => fn())
+  warpedSynthLayer(bus)
 }
 
 // Needs a user gesture first (browser autoplay rules); safe to call often
