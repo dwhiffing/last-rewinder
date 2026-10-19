@@ -123,8 +123,9 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const wide = isWide(tapeId)
   const [x, y, z] = position
   const hit = (
-    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y, z]}>
-      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), TAPE_SIZE[1], TAPE_SIZE[2]]} />
+    // also covers the board below, so there's no gap between rows either
+    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y - PANEL / 2, z]}>
+      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), tierSpacing, TAPE_SIZE[2]]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   )
