@@ -117,6 +117,7 @@ export interface GameState {
   buySnack: (type: SnackType) => void
   debugSkipDay: () => void
   debugAddMoney: () => void
+  debugAddReturn: () => void
   notInStock: (orderId: number) => void
   startNextDay: () => void
   setComputerOpen: (open: boolean) => void
@@ -577,6 +578,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
   },
   debugAddMoney: () => set((s) => ({ money: s.money + 5 })),
+  // a random tape the store doesn't own yet, dropped off unrewound like a return
+  debugAddReturn: () =>
+    set((s) => {
+      if (!s.stockPool.length) return {}
+      const i = Math.floor(Math.random() * s.stockPool.length)
+      const tapeId = s.stockPool[i]
+      return {
+        stockPool: s.stockPool.filter((_, j) => j !== i),
+        returnBox: [...s.returnBox, tapeId],
+        needsRewind: { ...s.needsRewind, [tapeId]: true },
+      }
+    }),
   // Saying a title order is out of stock: right if the store doesn't own the
   // tape (it gets ordered in for tomorrow), wrong if it does (the customer
   // leaves and the order is lost)

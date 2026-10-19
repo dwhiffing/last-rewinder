@@ -520,6 +520,7 @@ function DebugButtons() {
       <button onClick={() => skipDay()}>Skip day</button>
       <button onClick={() => addMoney()}>+$5</button>
       <button onClick={() => useGameStore.setState({ powerOut: true })}>Power cut</button>
+      <button onClick={() => useGameStore.getState().debugAddReturn()}>+Return</button>
     </div>
   )
 }
