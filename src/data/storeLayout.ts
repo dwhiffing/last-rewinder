@@ -158,8 +158,8 @@ export const NODES: NavNode[] = [
   { id: 'cornerRight', x: cornerX, z: backNodeZ },
 ]
 
-export const START_NODE = 'entrance'
-export const START_FACING: Facing = 0
+export const START_NODE = 'counter'
+export const START_FACING: Facing = 2
 
 // Nearest node in a world direction, among nodes lined up on that axis
 export function neighbourInDirection(

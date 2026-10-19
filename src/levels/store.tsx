@@ -41,8 +41,6 @@ const WALL = 0.2
 const halfW = STORE_WIDTH / 2
 const depth = BACK_Z - FRONT_Z
 const centerZ = (BACK_Z + FRONT_Z) / 2
-// Two windows either side of the entrance door, filling the front wall
-const windowWidth = halfW - WALL - 0.3 - 0.7
 // The ceiling texture is 6x6 tiles with light panels in a 2x2 pattern. Two
 // copies across each way, offset so the panels land on an even 4x4 grid.
 const CEILING_REPEAT = 2
@@ -63,8 +61,10 @@ const DOOR_W = 1
 const DOOR_H = 2
 const WINDOW_BOTTOM = 0.65
 const WINDOW_TOP = 1.85
+// Two matching windows either side of the door, the left one centred on the
+// computer desk
 const windowInner = ENTRANCE_X + 0.7
-const windowOuter = windowInner + windowWidth
+const windowOuter = windowInner + 2 * (-COUNTER_POSITION[0] - windowInner)
 const OPENINGS: [number, number, number, number][] = [
   [ENTRANCE_X - DOOR_W / 2, ENTRANCE_X + DOOR_W / 2, 0, DOOR_H],
   [-windowOuter, -windowInner, WINDOW_BOTTOM, WINDOW_TOP],
