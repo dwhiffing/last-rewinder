@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
+import { CrtWarp } from './CrtWarp'
 import { VhsOverlay } from './VhsOverlay'
 import { resetNav } from '../entities/controller/nav'
 
@@ -57,6 +58,7 @@ export function Game() {
         <KootaSystems>
           <DebugLevel />
         </KootaSystems>
+        <CrtWarp />
       </Canvas>
       <Hud />
     </div>

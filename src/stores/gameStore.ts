@@ -95,6 +95,9 @@ export interface GameState {
   rentDue: number
   // set when rent couldn't be paid
   gameOver: { day: number; rent: number } | null
+  // the VHS / tube TV screen effect; V toggles it
+  vhsOn: boolean
+  toggleVhs: () => void
   setScene: (scene: 'menu' | 'game') => void
   resetGame: () => void
   toggleLight: (id: string) => void
@@ -217,6 +220,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ soundMode: next })
   },
   setScene: (scene: 'menu' | 'game') => set(() => ({ scene })),
+  vhsOn: true,
+  toggleVhs: () => set((s) => ({ vhsOn: !s.vhsOn })),
   resetGame: () => {
     orderRand = mulberry32(Date.now())
     set(freshState())

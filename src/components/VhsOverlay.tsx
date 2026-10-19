@@ -1,17 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import useGameStore from '../stores/gameStore'
 
 // VHS look over the 3D view: scanlines, grain, a rolling tracking band, a
-// soft vignette, and glitches from a worn tape. V toggles it. Used over both
+// soft vignette, glitches from a worn tape and the curved edge of a tube TV.
+// V toggles it (the 3D view's barrel warp lives in CrtWarp). Used over both
 // the menu and the game.
+// One listener for the whole app; the menu and game each have an overlay
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'v' && !e.repeat) useGameStore.getState().toggleVhs()
+  })
+}
+
 export function VhsOverlay({ className = '' }: { className?: string }) {
-  const [on, setOn] = useState(true)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'v' && !e.repeat) setOn((v) => !v)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  const on = useGameStore((s) => s.vhsOn)
   if (!on) return null
   return (
     <div className={`vhs ${className}`} aria-hidden>
@@ -20,6 +22,8 @@ export function VhsOverlay({ className = '' }: { className?: string }) {
       <div className="vhs-tracking" />
       <TapeArtefacts />
       <div className="vhs-vignette" />
+      {/* rounded, shadowed edge of a tube TV screen */}
+      <div className="vhs-tube" />
     </div>
   )
 }

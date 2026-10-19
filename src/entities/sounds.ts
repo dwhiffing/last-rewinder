@@ -35,7 +35,7 @@ const _stepFilter = ctx.createBiquadFilter()
 _stepFilter.type = 'lowpass'
 _stepFilter.frequency.value = 200
 const _stepGain = ctx.createGain()
-_stepGain.gain.value = 0.9
+_stepGain.gain.value = 1.35
 _stepFilter.connect(_stepGain)
 _stepGain.connect(sfxMaster)
 
@@ -138,7 +138,7 @@ export function playWhoosh() {
   filter.frequency.exponentialRampToValueAtTime(500, t + 0.25)
   const gain = ctx.createGain()
   gain.gain.setValueAtTime(0, t)
-  gain.gain.linearRampToValueAtTime(0.22, t + 0.08)
+  gain.gain.linearRampToValueAtTime(0.088, t + 0.08)
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28)
   source.connect(filter).connect(gain).connect(sfxMaster)
   source.start(t)
