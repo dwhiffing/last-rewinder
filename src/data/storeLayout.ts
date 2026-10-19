@@ -119,9 +119,12 @@ export const coveringSlot = (slots: Record<string, string | null>, id: string) =
   return left && isWide(slots[left]) ? left : null
 }
 
+// The bottom tier is a blank kick panel, so slots start one tier up
+export const FIRST_TIER = 1
+
 export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
-  Array.from({ length: SHELF_TIERS * SLOTS_PER_TIER }, (_, i) =>
-    slotId(id, Math.floor(i / SLOTS_PER_TIER), i % SLOTS_PER_TIER),
+  Array.from({ length: (SHELF_TIERS - FIRST_TIER) * SLOTS_PER_TIER }, (_, i) =>
+    slotId(id, FIRST_TIER + Math.floor(i / SLOTS_PER_TIER), i % SLOTS_PER_TIER),
   ),
 )
 

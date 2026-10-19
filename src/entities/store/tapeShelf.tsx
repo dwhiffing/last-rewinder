@@ -5,6 +5,7 @@ import { GENRE_COLORS, tapeById } from '../../data/tapes'
 import {
   SHELF_DEPTH,
   SHELF_HEIGHT,
+  FIRST_TIER,
   SHELF_TIERS,
   SHELF_WIDTH,
   SLOTS_PER_TIER,
@@ -231,7 +232,16 @@ export function TapeShelf({
         color="#ffd400"
       />
 
-      {Array.from({ length: SHELF_TIERS }).flatMap((_, tier) =>
+      {/* the bottom tier is closed off with a plain blue panel */}
+      <Label
+        text=""
+        position={[0, PANEL + (tierSpacing - PANEL) / 2, SHELF_DEPTH / 2 - 0.002]}
+        width={SHELF_WIDTH - PANEL * 2}
+        height={tierSpacing - PANEL}
+        background="#1d3fbf"
+      />
+
+      {Array.from({ length: SHELF_TIERS - FIRST_TIER }, (_, i) => i + FIRST_TIER).flatMap((tier) =>
         Array.from({ length: SLOTS_PER_TIER }).map((_, slot) => {
           const sid = slotId(id, tier, slot)
           return <Slot key={sid} id={sid} tier={tier} slot={slot} />
