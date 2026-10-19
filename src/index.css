@@ -768,10 +768,10 @@ body {
 }
 
 .held-card {
-  width: 190px;
+  width: 285px;
 }
 .held-art {
   display: block;
   width: 100% !important;
-  height: 260px !important;
+  height: 390px !important;
 }
