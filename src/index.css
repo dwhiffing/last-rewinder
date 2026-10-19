@@ -743,3 +743,21 @@ body {
     inset 0 0 60px 18px rgba(0, 0, 0, 0.75),
     inset 0 0 12px 2px rgba(0, 0, 0, 0.9);
 }
+
+.snack-card {
+  width: 210px;
+  cursor: default;
+}
+.snack-art {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+/* the label wrap is the bottom half of the can texture */
+.soda-art {
+  aspect-ratio: 260 / 131;
+  background-size: 100% 200%;
+  background-position: bottom;
+}

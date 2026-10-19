@@ -14,6 +14,8 @@ import {
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
 import { type Order } from '../data/orders'
+import { SNACK_ART } from '../entities/store/snackBox'
+import { colaUrl } from '../entities/store/sodaCan'
 import { isSnack, itemColor, itemName, SNACK_TYPES, snackOf, SNACKS } from '../data/snacks'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
 import useGameStore, {
@@ -395,15 +397,16 @@ function TapeCard() {
   if (isSnack(top)) {
     const snack = snackOf(top)
     return (
-      <div className="tape-card">
-        <div className="tape-card-inner">
-          <div className="tape-front snack-front" style={{ background: snack.color }}>
-            <div className="tape-actors">Snack</div>
-            <div className="tape-title">{snack.type}</div>
-            <div className="tape-front-foot">
-              <span>Sells for ${snack.price}</span>
-            </div>
-          </div>
+      <div className="tape-card snack-card">
+        {snack.type === 'Soda' ? (
+          <div className="snack-art soda-art" style={{ backgroundImage: `url(${colaUrl})` }} />
+        ) : (
+          <img className="snack-art" src={SNACK_ART[snack.type]} alt={snack.type} />
+        )}
+        <div className="tape-card-hint">
+          {snack.type}
+          {' \u00b7 sells for $'}
+          {snack.price}
         </div>
       </div>
     )

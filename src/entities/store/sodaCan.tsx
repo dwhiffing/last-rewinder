@@ -1,4 +1,4 @@
-import { SRGBColorSpace, TextureLoader } from 'three'
+import { RepeatWrapping, SRGBColorSpace, TextureLoader } from 'three'
 import colaUrl from '../../assets/cola.webp'
 
 // A soda can. The texture holds the lid and base as two circles across the
@@ -11,14 +11,17 @@ function region(repeatX: number, repeatY: number, offsetX: number, offsetY: numb
   const tex = loader.load(colaUrl)
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = 4
+  tex.wrapS = RepeatWrapping
   tex.repeat.set(repeatX, repeatY)
   tex.offset.set(offsetX, offsetY)
   return tex
 }
-// the wrap is shifted so the big SODA logo faces out (+z) rather than the seam
-const SIDE = region(1, 0.5, 0.75, 0)
+// the wrap is shifted so the big block SODA logo faces out (+z)
+const SIDE = region(1, 0.5, 0.47, 0)
 const LID = region(0.46, 0.46, 0.02, 0.52)
 const BASE = region(0.46, 0.46, 0.52, 0.52)
+
+export { colaUrl }
 
 export function SodaCan({
   position,

@@ -16,7 +16,13 @@ function art(url: string) {
   return tex
 }
 
-type BoxSnack = Exclude<SnackType, 'Soda'>
+export type BoxSnack = Exclude<SnackType, 'Soda'>
+export const SNACK_ART: Record<BoxSnack, string> = {
+  Chips: chipsUrl,
+  Popcorn: popcornUrl,
+  Licorice: licoriceUrl,
+  Candy: candyUrl,
+}
 const BOXES: Record<BoxSnack, { map: ReturnType<typeof art>; aspect: number; depth: number; color: string }> = {
   Chips: { map: art(chipsUrl), aspect: 506 / 306, depth: 0.05, color: '#1c2f73' },
   Popcorn: { map: art(popcornUrl), aspect: 247 / 322, depth: 0.06, color: '#1f4fc4' },
