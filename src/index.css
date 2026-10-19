@@ -478,3 +478,21 @@ body {
   font-size: 15px;
   cursor: pointer;
 }
+.order-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.order-missing {
+  padding: 3px 8px;
+  border: 1px solid #ff6b6b;
+  border-radius: 4px;
+  background: none;
+  color: #ff6b6b;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.order-missing:hover {
+  background: rgba(255, 107, 107, 0.15);
+}

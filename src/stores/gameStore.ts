@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { ALL_SLOT_IDS } from '../data/storeLayout'
-import { daySchedule, generateOrder, matches, type Order, type OrderKind } from '../data/orders'
+import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
 import { TAPES, tapeById } from '../data/tapes'
 import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
@@ -13,9 +13,7 @@ const FIRST_ORDER_AT = 3
 const ORDER_GAP: [number, number] = [12, 20]
 
 // Days and stock
-export const DAY_SECONDS = 180
-const STARTING_TAPES = 10
-const NEW_TAPES_PER_DAY = 5
+const STARTING_TAPES = 25
 // Rented tapes come back unrewound in the return box 1 to 3 days later
 const RENTAL_DAYS: [number, number] = [1, 3]
 export const REWIND_SECONDS = 8
@@ -64,20 +62,21 @@ export interface GameState {
   // the top tape's card shows its back
   coverFlipped: boolean
   day: number
-  dayEndsAt: number
   // set when the day has ended and the summary is showing
   dayOver: DaySummary | null
   today: DaySummary
-  // catalogue tapes the store doesn't own yet, in arrival order
+  // catalogue tapes the store doesn't own and hasn't ordered yet
   stockPool: string[]
+  // tapes ordered in through "Not in stock"; they arrive tomorrow morning
+  incoming: string[]
   // return box, bottom first; the last one is taken first
   returnBox: string[]
   // tapes that have to go through the rewinder before shelving or renting
   needsRewind: Record<string, boolean>
   rewinder: Rewinder | null
   rented: { tapeId: string; returnDay: number }[]
-  // kinds of the next orders to arrive today; titles once it runs out
-  schedule: OrderKind[]
+  // the rest of today's orders; the day ends once these and the open ones are done
+  schedule: ScheduledKind[]
   setScene: (scene: 'menu' | 'game') => void
   resetGame: () => void
   toggleLight: (id: string) => void
@@ -89,6 +88,7 @@ export interface GameState {
   useRewinder: () => void
   tick: (delta: number) => void
   handIn: (orderId: number) => void
+  notInStock: (orderId: number) => void
   startNextDay: () => void
   setComputerOpen: (open: boolean) => void
   flipCover: () => void
@@ -142,14 +142,14 @@ const freshState = () => ({
   computerOpen: false,
   coverFlipped: false,
   day: 1,
-  dayEndsAt: DAY_SECONDS,
   dayOver: null,
   today: emptyDay(),
   returnBox: [] as string[],
   needsRewind: {} as Record<string, boolean>,
   rewinder: null,
   rented: [] as { tapeId: string; returnDay: number }[],
-  schedule: daySchedule(orderRand, 1),
+  schedule: daySchedule(orderRand, 1, 0),
+  incoming: [] as string[],
 })
 
 // Tapes in the store that no open order is after. Unrewound ones count, since
@@ -296,10 +296,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (s.dayOver) return
     const time = s.time + delta
 
-    // Closing time: open orders go unfilled and the day's summary shows
-    if (time >= s.dayEndsAt) {
-      const today = { ...s.today, missed: s.today.missed + s.orders.length }
-      set({ time, orders: [], today, dayOver: today, computerOpen: false })
+    // Closing time: every order for the day has been dealt with
+    if (!s.schedule.length && !s.orders.length) {
+      set({ time, dayOver: s.today, computerOpen: false })
       return
     }
 
@@ -320,18 +319,31 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     if (time >= nextOrderAt) {
       const gap = ORDER_GAP[0] + orderRand() * (ORDER_GAP[1] - ORDER_GAP[0])
-      if (orders.length < MAX_ORDERS) {
-        const kind = s.schedule[0] ?? 'title'
-        const order = generateOrder(
-          orderRand,
-          nextOrderId,
-          time,
-          availableTapes({ ...s, orders }),
-          kind,
-          s.day >= 3,
-        )
+      if (orders.length < MAX_ORDERS && s.schedule.length) {
+        const kind = s.schedule[0]
+        const reserved = new Set(orders.flatMap((o) => o.items.map((i) => i.target)))
+        const order =
+          kind === 'missing'
+            ? generateOrder(
+                orderRand,
+                nextOrderId,
+                time,
+                s.stockPool.filter((id) => !reserved.has(id)),
+                'title',
+                false,
+              )
+            : generateOrder(
+                orderRand,
+                nextOrderId,
+                time,
+                availableTapes({ ...s, orders }),
+                kind,
+                s.day >= 3,
+              )
+        // An order that can't be made (nothing left to ask for) is skipped
+        patch.schedule = s.schedule.slice(1)
         if (order) {
-          patch.schedule = s.schedule.slice(1)
+          if (kind === 'missing') order.missing = true
           orders = [...orders, order]
           nextOrderId++
           playOrderIn()
@@ -397,24 +409,58 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     }
   },
-  // Morning: rentals that are due come back unrewound, and new stock arrives
-  // in the return box already rewound
+  // Saying a title order is out of stock: right if the store doesn't own the
+  // tape (it gets ordered in for tomorrow), wrong if it does (the customer
+  // leaves and the order is lost)
+  notInStock: (orderId) => {
+    const s = get()
+    const order = s.orders.find((o) => o.id === orderId)
+    if (!order || order.kind !== 'title') return
+    const orders = s.orders.filter((o) => o.id !== orderId)
+    if (order.missing) {
+      const tapeId = order.items[0].target
+      playCash()
+      set({
+        orders,
+        money: s.money + order.reward,
+        stockPool: s.stockPool.filter((id) => id !== tapeId),
+        incoming: [...s.incoming, tapeId],
+        today: {
+          ...s.today,
+          filled: s.today.filled + 1,
+          earned: s.today.earned + order.reward,
+        },
+        message: {
+          text: `Ordered ${tapeById(tapeId).title} for tomorrow. +${formatMoney(order.reward)}`,
+          at: performance.now(),
+        },
+      })
+      return
+    }
+    playError()
+    set({
+      orders,
+      today: { ...s.today, missed: s.today.missed + 1 },
+      message: { text: 'We do carry that one! The customer gave up', at: performance.now() },
+    })
+  },
+  // Morning: rentals that are due come back unrewound, and tapes ordered
+  // yesterday arrive in the return box already rewound
   startNextDay: () => {
     const s = get()
     const day = s.day + 1
     const due = s.rented.filter((r) => r.returnDay <= day).map((r) => r.tapeId)
-    const arrivals = s.stockPool.slice(0, NEW_TAPES_PER_DAY)
+    const arrivals = s.incoming
     const needsRewind = { ...s.needsRewind }
     for (const id of due) needsRewind[id] = true
     set({
       day,
       dayOver: null,
-      schedule: daySchedule(orderRand, day),
+      schedule: daySchedule(orderRand, day, s.stockPool.length),
       today: emptyDay(),
-      dayEndsAt: s.time + DAY_SECONDS,
       nextOrderAt: s.time + FIRST_ORDER_AT,
       rented: s.rented.filter((r) => r.returnDay > day),
-      stockPool: s.stockPool.slice(NEW_TAPES_PER_DAY),
+      incoming: [],
       returnBox: [...s.returnBox, ...arrivals, ...shuffle(orderRand, due)],
       needsRewind,
       message: {

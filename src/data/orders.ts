@@ -41,6 +41,9 @@ export interface Order {
   reward: number
   createdAt: number
   expiresAt: number
+  // asks for a tape the store doesn't own; the right answer is "Not in stock",
+  // which orders the tape in for tomorrow
+  missing?: boolean
 }
 
 export const ORDER_RULES: Record<OrderKind, { reward: number; seconds: number }> = {
@@ -232,18 +235,26 @@ export function generateOrder(
   }
 }
 
-// Difficulty ramps by day: day 1 is all title orders, day 2 slips in one
-// clue, and each day after adds another clue and another requirement order.
-// Returns the special orders for the day, spread at random through the first
-// `slots` orders; every other order is a title.
-export const DAY_ORDER_SLOTS = 10
-export function daySchedule(rand: Rand, day: number): OrderKind[] {
-  const clues = Math.max(0, day - 1)
-  const requests = Math.max(0, day - 2)
+// What the day's orders will be. 'missing' is a title order for a tape the
+// store doesn't own yet.
+export type ScheduledKind = OrderKind | 'missing'
+
+// Each day has a fixed number of orders and ends once they're all filled or
+// expired. Day 1 is 5 title orders; each day after adds 2 more orders, one
+// more clue and (from day 3) one more requirement order. From day 2, a few
+// title orders ask for tapes you don't have, which is how new stock comes in.
+export const ORDERS_DAY_ONE = 5
+export const ORDERS_PER_DAY_GROWTH = 2
+export const MISSING_PER_DAY = 3
+export function daySchedule(rand: Rand, day: number, unowned: number): ScheduledKind[] {
+  const total = ORDERS_DAY_ONE + ORDERS_PER_DAY_GROWTH * (day - 1)
+  const missing = day >= 2 ? Math.min(MISSING_PER_DAY, unowned) : 0
   const special = [
-    ...Array<OrderKind>(clues).fill('clue'),
-    ...Array<OrderKind>(requests).fill('requirements'),
-  ].slice(0, DAY_ORDER_SLOTS - 2)
-  const titles = Array<OrderKind>(DAY_ORDER_SLOTS - special.length).fill('title')
-  return shuffle(rand, [...special, ...titles])
+    ...Array<ScheduledKind>(missing).fill('missing'),
+    ...Array<ScheduledKind>(Math.max(0, day - 1)).fill('clue'),
+    ...Array<ScheduledKind>(Math.max(0, day - 2)).fill('requirements'),
+  ].slice(0, total - 1)
+  const titles = Array<ScheduledKind>(total - special.length).fill('title')
+  // Keep a plain title order first so each day eases in
+  return ['title', ...shuffle(rand, [...special, ...titles.slice(1)])]
 }

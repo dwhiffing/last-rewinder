@@ -216,14 +216,14 @@ function MoneyHud() {
   const money = useGameStore((s) => s.money)
   const orders = useGameStore((s) => s.orders)
   const day = useGameStore((s) => s.day)
-  const dayEndsAt = useGameStore((s) => s.dayEndsAt)
+  const ordersLeft = useGameStore((s) => s.schedule.length + s.orders.length)
   const time = useClock()
   const soonest = orders.reduce((min, o) => Math.min(min, o.expiresAt), Infinity)
   const left = soonest - time
   return (
     <div className="money-hud">
       <div className="day-clock">
-        Day {day} \u00b7 closes in {formatTime(dayEndsAt - time)}
+        Day {day} \u00b7 {ordersLeft} order{ordersLeft === 1 ? '' : 's'} left today
       </div>
       <div className="money">${money}</div>
       <div className={`orders-count ${left < 15 ? 'urgent' : ''}`}>
@@ -243,11 +243,17 @@ const KIND_LABELS: Record<Order['kind'], string> = {
 
 function OrderCard({ order, time }: { order: Order; time: number }) {
   const handIn = useGameStore((s) => s.handIn)
+  const notInStock = useGameStore((s) => s.notInStock)
+  const day = useGameStore((s) => s.day)
   const total = order.expiresAt - order.createdAt
   const left = order.expiresAt - time
   const done = order.items.filter((i) => i.filled).length
   return (
-    <button className={`order-card kind-${order.kind}`} onClick={() => handIn(order.id)}>
+    <div
+      role="button"
+      tabIndex={0}
+      className={`order-card kind-${order.kind}`}
+      onClick={() => handIn(order.id)}>
       <div className="order-head">
         <span className="order-kind">{KIND_LABELS[order.kind]}</span>
         <span className="order-reward">${order.reward}</span>
@@ -271,8 +277,21 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
           style={{ width: `${Math.max(0, (left / total) * 100)}%` }}
         />
       </div>
-      <div className="order-time">{formatTime(left)} left</div>
-    </button>
+      <div className="order-foot">
+        <span className="order-time">{formatTime(left)} left</span>
+        {/* from day 2 some title orders ask for tapes the store doesn't carry */}
+        {order.kind === 'title' && day >= 2 && done === 0 && (
+          <button
+            className="order-missing"
+            onClick={(e) => {
+              e.stopPropagation()
+              notInStock(order.id)
+            }}>
+            Not in stock
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
