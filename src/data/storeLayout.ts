@@ -187,3 +187,6 @@ export const DROP_BIN_POSITION: [number, number, number] = [
   0,
   frontNodeZ,
 ]
+
+// Cardboard movie standee against the front wall, where the return box was
+export const STANDEE_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.35]

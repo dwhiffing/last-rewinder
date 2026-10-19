@@ -21,6 +21,7 @@ import {
   REWINDER_TABLE_POSITION,
   REWINDER_TABLE_SIZE,
   SHELVES,
+  STANDEE_POSITION,
   STORE_HEIGHT,
   STORE_WIDTH,
 } from '../data/storeLayout'
@@ -29,6 +30,7 @@ import Carpet from '../entities/store/carpet'
 import { CEILING, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
+import Standee from '../entities/store/standee'
 import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
@@ -286,6 +288,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         background={TRIM_COLOR}
         color="#ffd400"
       />
+
+      <Standee position={STANDEE_POSITION} />
 
       {/* quick drop bin for returned tapes */}
       <group name="dropBin" userData={{ label: 'Return box' }}>
