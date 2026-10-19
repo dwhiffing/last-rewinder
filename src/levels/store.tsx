@@ -84,6 +84,7 @@ const FRONT_WALL_PIECES: [number, number, number, number][] = [
   }),
 ]
 
+const RETURN_DESK_H = 0.84
 const LIGHT_INTENSITY = 1.25
 // Panels (by grid fraction) whose tubes are dead, and one on its way out
 const DEAD_LIGHTS = ['0.625,0.375', '0.125,0.875', '0.875,0.125', '0.375,0.125']
@@ -302,7 +303,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         <Block size={COUNTER_SIZE} position={[cx, COUNTER_SIZE[1] / 2, cz]} color={TRIM_COLOR} textures={SCUFFS} />
         <TableTop width={COUNTER_SIZE[0]} depth={COUNTER_SIZE[2]} position={[cx, COUNTER_SIZE[1], cz]} />
       </group>
-      <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz]} />
+      {/* set back so the monitor touches the wall */}
+      <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz - 0.03]} />
 
       {/* rewinder table against the left wall, between shelf A and the counter */}
       <Block
@@ -318,7 +320,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <Label
         text="CHECKOUT"
         marquee
-        position={[cx, 2.2, frontInner + 0.01]}
+        position={[cx, 2.1, frontInner + 0.01]}
         width={1.4}
         height={0.24}
         background={TRIM_COLOR}
@@ -339,9 +341,9 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* quick drop bin for returned tapes */}
       <group name="dropBin" userData={{ label: 'Return box' }}>
-        <Block size={[0.6, 0.7, 0.6]} position={[bx, 0.35, bz]} color="#2e7d32" textures={SCUFFS} />
-        <TableTop width={0.6} depth={0.6} position={[bx, 0.7, bz]} />
-        <ReturnBoxTapes position={[bx, 0.7 + TOP_H, bz]} />
+        <Block size={[0.6, RETURN_DESK_H, 0.6]} position={[bx, RETURN_DESK_H / 2, bz]} color={TRIM_COLOR} textures={SCUFFS} />
+        <TableTop width={0.6} depth={0.6} position={[bx, RETURN_DESK_H, bz]} />
+        <ReturnBoxTapes position={[bx, RETURN_DESK_H + TOP_H, bz]} />
       </group>
       <Label
         text="RETURNS"
