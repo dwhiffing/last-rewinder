@@ -20,6 +20,7 @@ import {
   NODES,
   REWINDER_TABLE_POSITION,
   REWINDER_TABLE_SIZE,
+  POSTERS,
   SHELVES,
   STANDEE_POSITION,
   STORE_HEIGHT,
@@ -31,6 +32,7 @@ import { CEILING, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
+import Poster from '../entities/store/poster'
 import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
@@ -290,6 +292,15 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       />
 
       <Standee position={STANDEE_POSITION} />
+
+      {POSTERS.map(({ id, side, z }) => (
+        <Poster
+          key={id}
+          id={id}
+          position={[side * (halfW - WALL / 2 - 0.005), 1.55, z]}
+          rotation={[0, -side * (Math.PI / 2), 0]}
+        />
+      ))}
 
       {/* quick drop bin for returned tapes */}
       <group name="dropBin" userData={{ label: 'Return box' }}>

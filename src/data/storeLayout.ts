@@ -190,3 +190,11 @@ export const DROP_BIN_POSITION: [number, number, number] = [
 
 // Cardboard movie standee against the front wall, where the return box was
 export const STANDEE_POSITION: [number, number, number] = [cornerX, 0, FRONT_Z + WALL_INNER + 0.35]
+
+// Movie posters on the side walls at the front of the store: one above the
+// rewinder table, two either side of the return box
+export const POSTERS: { id: string; side: -1 | 1; z: number }[] = [
+  { id: 'total-rewind', side: -1, z: frontNodeZ },
+  { id: 'commando-kitchen', side: 1, z: frontNodeZ - 1 },
+  { id: 'little-robot', side: 1, z: frontNodeZ + 1 },
+]
