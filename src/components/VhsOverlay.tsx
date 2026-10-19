@@ -46,7 +46,6 @@ function TapeArtefacts() {
     window.addEventListener('resize', resize)
 
     // Glitches that last a few frames
-    let streaks: { x: number; y: number; w: number; a: number; life: number }[] = []
     let tear: { y: number; h: number; life: number } | null = null
     let frame = 0
     let raf = 0
@@ -57,28 +56,9 @@ function TapeArtefacts() {
       const { width: w, height: h } = canvas
       g.clearRect(0, 0, w, h)
 
-      if (Math.random() < 0.024) {
-        const count = 1 + Math.floor(Math.random() * 3)
-        for (let i = 0; i < count; i++) {
-          streaks.push({
-            x: Math.random() * w,
-            y: Math.random() * h,
-            w: 3 + Math.random() * w * 0.15,
-            a: 0.25 + Math.random() * 0.45,
-            life: 1 + Math.floor(Math.random() * 3),
-          })
-        }
-      }
       if (!tear && Math.random() < 0.0018) {
         tear = { y: Math.random() * h, h: 2 + Math.random() * h * 0.06, life: 3 + Math.floor(Math.random() * 6) }
       }
-
-      for (const s of streaks) {
-        g.fillStyle = `rgba(255,255,255,${s.a})`
-        g.fillRect(s.x, s.y, s.w, 1)
-        s.life--
-      }
-      streaks = streaks.filter((s) => s.life > 0)
 
       if (tear) {
         // a band of grainy static, with a few brighter shifted lines
