@@ -581,11 +581,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   // a random tape the store doesn't own yet, dropped off unrewound like a return
   debugAddReturn: () =>
     set((s) => {
-      if (!s.stockPool.length) return {}
-      const i = Math.floor(Math.random() * s.stockPool.length)
-      const tapeId = s.stockPool[i]
+      // skip tapes an open "not in stock" order is asking for
+      const reserved = new Set(s.orders.flatMap((o) => o.items.map((i) => i.target)))
+      const pool = s.stockPool.filter((id) => !reserved.has(id))
+      if (!pool.length) return {}
+      const tapeId = pool[Math.floor(Math.random() * pool.length)]
       return {
-        stockPool: s.stockPool.filter((_, j) => j !== i),
+        stockPool: s.stockPool.filter((id) => id !== tapeId),
         returnBox: [...s.returnBox, tapeId],
         needsRewind: { ...s.needsRewind, [tapeId]: true },
       }
