@@ -17,6 +17,7 @@ import {
 } from '../data/storeLayout'
 import FlickerLight from '../entities/flickerLight'
 import Block from '../entities/store/block'
+import Carpet from '../entities/store/carpet'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
@@ -61,6 +62,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
     <group ref={ref}>
       {/* shell */}
       <Block size={[STORE_WIDTH, WALL, depth]} position={[0, -WALL / 2, centerZ]} color={FLOOR_COLOR} />
+      <Carpet width={STORE_WIDTH} depth={depth} z={centerZ} />
       {!hideCeiling && (
         <Block size={[STORE_WIDTH, WALL, depth]} position={[0, STORE_HEIGHT + WALL / 2, centerZ]} color="#eeeeee" />
       )}
