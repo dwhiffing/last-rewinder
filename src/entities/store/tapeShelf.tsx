@@ -239,7 +239,7 @@ export function TapeShelf({
         position={[0, PANEL + (tierSpacing - PANEL) / 2, SHELF_DEPTH / 2 - 0.002]}
         width={SHELF_WIDTH - PANEL * 2}
         height={tierSpacing - PANEL}
-        background="#1d3fbf"
+        background="#142c86"
       />
 
       {Array.from({ length: SHELF_TIERS - FIRST_TIER }, (_, i) => i + FIRST_TIER).flatMap((tier) =>
