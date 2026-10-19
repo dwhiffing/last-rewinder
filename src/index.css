@@ -760,3 +760,9 @@ body {
     display: none !important;
   }
 }
+
+@font-face {
+  font-family: 'ITC Machine';
+  src: url('./assets/itc-machine-bold.otf') format('opentype');
+  font-weight: bold;
+}

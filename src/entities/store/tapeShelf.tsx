@@ -217,6 +217,7 @@ export function TapeShelf({
 
       <Label
         text={`SHELF ${id}`}
+        marquee
         // fills the header between the side panels, above the top board
         position={[0, SHELF_HEIGHT - HEADER / 2, SHELF_DEPTH / 2 - 0.002]}
         width={SHELF_WIDTH - PANEL * 2}

@@ -317,6 +317,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       </group>
       <Label
         text="CHECKOUT"
+        marquee
         position={[cx, 2.2, frontInner + 0.01]}
         width={1.4}
         height={0.24}
@@ -344,6 +345,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       </group>
       <Label
         text="RETURNS"
+        marquee
         position={[halfW - WALL / 2 - 0.01, 1.5, bz]}
         rotation={[0, -Math.PI / 2, 0]}
         width={0.9}
