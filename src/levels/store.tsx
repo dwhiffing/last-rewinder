@@ -282,7 +282,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       </group>
       <Label
         text="CHECKOUT"
-        position={[cx, 1.5, cz - 0.1]}
+        position={[cx, 2.2, frontInner + 0.01]}
         width={1.4}
         height={0.24}
         background={TRIM_COLOR}
