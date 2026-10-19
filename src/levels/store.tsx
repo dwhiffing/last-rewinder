@@ -17,7 +17,7 @@ import {
 } from '../data/storeLayout'
 import Block from '../entities/store/block'
 import Carpet from '../entities/store/carpet'
-import { CEILING, WALLPAPER } from '../entities/store/textures'
+import { CEILING, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import { Mesh } from '../shared/traits'
@@ -35,6 +35,11 @@ const windowWidth = halfW - WALL - 0.3 - 0.7
 // copies across each way, offset so the panels land on an even 4x4 grid.
 const CEILING_REPEAT = 2
 const LIGHT_FRACTIONS = [0.125, 0.375, 0.625, 0.875]
+
+// Baseboard height and thickness
+const BASE_H = 0.12
+const BASE_T = 0.025
+const frontBaseWidth = halfW - WALL / 2 - 0.5
 
 const FLOOR_COLOR = '#3a4a6b'
 const WALL_COLOR = '#d8d2c4'
@@ -103,6 +108,27 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, FRONT_Z]} color={WALL_COLOR} textures={WALLPAPER} />
       <Block size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
       <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
+
+      {/* wooden baseboard around the inside of the walls, broken at the door */}
+      <Block size={[STORE_WIDTH - WALL, BASE_H, BASE_T]} position={[0, BASE_H / 2, BACK_Z - WALL / 2 - BASE_T / 2]} color="#ffffff" textures={WOOD} />
+      {[-1, 1].map((side) => (
+        <Block
+          key={`side${side}`}
+          size={[BASE_T, BASE_H, depth - WALL]}
+          position={[side * (halfW - WALL / 2 - BASE_T / 2), BASE_H / 2, centerZ]}
+          color="#ffffff"
+          textures={WOOD}
+        />
+      ))}
+      {[-1, 1].map((side) => (
+        <Block
+          key={`front${side}`}
+          size={[frontBaseWidth, BASE_H, BASE_T]}
+          position={[ENTRANCE_X + side * (0.5 + frontBaseWidth / 2), BASE_H / 2, FRONT_Z + WALL / 2 + BASE_T / 2]}
+          color="#ffffff"
+          textures={WOOD}
+        />
+      ))}
 
       {/* store front: windows and entrance (decorative) */}
       {[-1, 1].map((side) => (
