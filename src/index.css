@@ -692,7 +692,7 @@ body {
   width: min(560px, 88vw);
   filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.55));
   user-select: none;
-  animation: titlePulse 4s ease-in-out infinite;
+  animation: titlePulse 12s ease-in-out infinite;
 }
 /* gentle breathing scale with a slow rock side to side */
 @keyframes titlePulse {
