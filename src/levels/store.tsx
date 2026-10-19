@@ -1,6 +1,7 @@
 import { useWorld } from 'koota/react'
 import { useEffect, useMemo, useRef } from 'react'
-import { type Group } from 'three'
+import { type Group, type Mesh as ThreeMesh, type PointLight } from 'three'
+import { useFrame } from '@react-three/fiber'
 import {
   BACK_Z,
   COUNTER_POSITION,
@@ -46,6 +47,54 @@ const WALL_COLOR = '#d8d2c4'
 const TRIM_COLOR = '#1d3fbf'
 const GLASS = '#9fc6e8'
 const GLASS_GLOW = '#3d5a7a'
+
+const LIGHT_INTENSITY = 1.25
+// Panels (by grid fraction) whose tubes are dead, and one on its way out
+const DEAD_LIGHTS = ['0.125,0.875', '0.625,0.375', '0.875,0.125']
+const FLICKER_LIGHTS = ['0.375,0.625']
+// A light panel's size on the ceiling (about 0.154 of one texture copy)
+const PANEL_W = (STORE_WIDTH / CEILING_REPEAT) * 0.154
+const PANEL_D = (depth / CEILING_REPEAT) * 0.154
+
+// Grey cover over a light panel, hiding its glow
+function PanelCover({ position, coverRef }: { position: [number, number, number]; coverRef?: React.Ref<ThreeMesh> }) {
+  return (
+    <mesh ref={coverRef} rotation={[Math.PI / 2, 0, 0]} position={[position[0], STORE_HEIGHT - 0.004, position[2]]}>
+      <planeGeometry args={[PANEL_W, PANEL_D]} />
+      <meshStandardMaterial color="#8d9698" roughness={0.5} />
+    </mesh>
+  )
+}
+
+function DeadPanel({ position }: { position: [number, number, number] }) {
+  return <PanelCover position={position} />
+}
+
+// A dying tube: mostly on, with bursts of stuttering off
+function FlickerPanel({ position }: { position: [number, number, number] }) {
+  const light = useRef<PointLight>(null)
+  const cover = useRef<ThreeMesh>(null)
+  const burst = useRef(0)
+  useFrame((_, delta) => {
+    if (burst.current > 0) burst.current -= delta
+    else if (Math.random() < delta / 4) burst.current = 0.3 + Math.random() * 1.2
+    const off = burst.current > 0 && Math.random() < 0.5
+    if (light.current) light.current.intensity = off ? 0 : LIGHT_INTENSITY
+    if (cover.current) cover.current.visible = off
+  })
+  return (
+    <>
+      <pointLight
+        ref={light}
+        position={[position[0], STORE_HEIGHT - 0.15, position[2]]}
+        intensity={LIGHT_INTENSITY}
+        distance={5}
+        color="#eef8ff"
+      />
+      <PanelCover position={position} coverRef={cover} />
+    </>
+  )
+}
 
 // Drop-ceiling tiles with glowing light panels, just under the ceiling slab
 function Ceiling() {
@@ -200,21 +249,28 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       {NODES.map((n) => (
         <mesh key={n.id} position={[n.x, 0.005, n.z]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.18, 24]} />
-          <meshBasicMaterial color="#ffd400" transparent opacity={0.5} />
+          {/* lit like the floor so it doesn't glow at full brightness */}
+          <meshStandardMaterial color="#ffd400" transparent opacity={0.5} depthWrite={false} roughness={1} />
         </mesh>
       ))}
 
-      {/* one light under each ceiling light panel */}
+      {/* one light under each working ceiling light panel */}
       {LIGHT_FRACTIONS.flatMap((fx) =>
-        LIGHT_FRACTIONS.map((fz) => (
-          <pointLight
-            key={`${fx},${fz}`}
-            position={[-halfW + fx * STORE_WIDTH, STORE_HEIGHT - 0.15, FRONT_Z + fz * depth]}
-            intensity={2.5}
-            distance={5}
-            color="#eef8ff"
-          />
-        )),
+        LIGHT_FRACTIONS.map((fz) => {
+          const key = `${fx},${fz}`
+          const position: [number, number, number] = [-halfW + fx * STORE_WIDTH, STORE_HEIGHT, FRONT_Z + fz * depth]
+          if (DEAD_LIGHTS.includes(key)) return <DeadPanel key={key} position={position} />
+          if (FLICKER_LIGHTS.includes(key)) return <FlickerPanel key={key} position={position} />
+          return (
+            <pointLight
+              key={key}
+              position={[position[0], STORE_HEIGHT - 0.15, position[2]]}
+              intensity={LIGHT_INTENSITY}
+              distance={5}
+              color="#eef8ff"
+            />
+          )
+        }),
       )}
     </group>
   )
