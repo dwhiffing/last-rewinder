@@ -28,9 +28,8 @@ export function VhsOverlay({ className = '' }: { className?: string }) {
   )
 }
 
-// Wear and tear drawn on a low-res canvas: thin white dropout streaks where
-// the oxide has flaked off, and now and then a band of static where the
-// picture tears sideways for a few frames
+// Wear and tear drawn on a low-res canvas: now and then a band of static
+// where the picture tears sideways for a few frames
 const RES = 4 // canvas pixels are this many screen pixels
 function TapeArtefacts() {
   const ref = useRef<HTMLCanvasElement>(null)
