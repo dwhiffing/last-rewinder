@@ -211,10 +211,3 @@ export function setMusicMuted(muted: boolean) {
   )
 }
 
-// Browsers keep audio locked until the player clicks or presses a key
-export const musicUnlocked = () => ctx.state === 'running'
-export function onMusicUnlock(cb: () => void) {
-  const check = () => musicUnlocked() && cb()
-  ctx.addEventListener('statechange', check)
-  return () => ctx.removeEventListener('statechange', check)
-}
