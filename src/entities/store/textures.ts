@@ -52,7 +52,13 @@ export const CEILING: TextureSet = {
 
 // A box whose UVs are scaled by each face's size in metres, so a texture
 // keeps the same scale on every face instead of stretching
-export function scaledBoxGeometry([x, y, z]: [number, number, number], tile: number) {
+// `origin` (the box's centre in the world) lines the +z face up with
+// neighbouring boxes, so a wall built from pieces has no seams
+export function scaledBoxGeometry(
+  [x, y, z]: [number, number, number],
+  tile: number,
+  origin?: [number, number, number],
+) {
   const geo = new BoxGeometry(x, y, z)
   // faces in order +x, -x, +y, -y, +z, -z; each has 4 verts
   const dims: [number, number][] = [[z, y], [z, y], [x, z], [x, z], [x, y], [x, y]]
@@ -60,7 +66,13 @@ export function scaledBoxGeometry([x, y, z]: [number, number, number], tile: num
   for (let face = 0; face < 6; face++) {
     const [w, h] = dims[face]
     for (let v = face * 4; v < face * 4 + 4; v++) {
-      uv.setXY(v, (uv.getX(v) * w) / tile, (uv.getY(v) * h) / tile)
+      let u = (uv.getX(v) * w) / tile
+      let t = (uv.getY(v) * h) / tile
+      if (origin && face === 4) {
+        u += (origin[0] - x / 2) / tile
+        t += (origin[1] - y / 2) / tile
+      }
+      uv.setXY(v, u, t)
     }
   }
   return geo

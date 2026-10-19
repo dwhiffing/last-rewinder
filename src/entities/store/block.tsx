@@ -8,6 +8,7 @@ export function Block({
   color = '#888',
   emissive,
   textures,
+  alignUv,
   name,
   userData,
   children,
@@ -17,13 +18,15 @@ export function Block({
   color?: string
   emissive?: string
   textures?: TextureSet
+  // line the texture up with neighbouring blocks (by world position)
+  alignUv?: boolean
   name?: string
   userData?: Record<string, unknown>
   children?: ReactNode
 }) {
   const geometry = useMemo(
-    () => (textures ? scaledBoxGeometry(size, textures.tile) : null),
-    [textures, ...size],
+    () => (textures ? scaledBoxGeometry(size, textures.tile, alignUv ? position : undefined) : null),
+    [textures, alignUv, ...size, ...position],
   )
   return (
     <mesh

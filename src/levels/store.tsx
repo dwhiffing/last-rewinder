@@ -1,7 +1,15 @@
 import { useWorld } from 'koota/react'
 import { useEffect, useMemo, useRef } from 'react'
-import { type Group, type Mesh as ThreeMesh, type PointLight } from 'three'
-import { useFrame } from '@react-three/fiber'
+import {
+  EquirectangularReflectionMapping,
+  type Group,
+  type Mesh as ThreeMesh,
+  type PointLight,
+  SRGBColorSpace,
+  TextureLoader,
+} from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import nightSkyUrl from '../assets/night-sky.jpg'
 import {
   BACK_Z,
   COUNTER_POSITION,
@@ -46,7 +54,33 @@ const FLOOR_COLOR = '#3a4a6b'
 const WALL_COLOR = '#d8d2c4'
 const TRIM_COLOR = '#1d3fbf'
 const GLASS = '#9fc6e8'
-const GLASS_GLOW = '#3d5a7a'
+
+// Openings in the front wall as [x0, x1, y0, y1]: the door, then a window
+// either side of it
+const DOOR_W = 1
+const DOOR_H = 2
+const WINDOW_BOTTOM = 0.65
+const WINDOW_TOP = 1.85
+const windowInner = ENTRANCE_X + 0.7
+const windowOuter = windowInner + windowWidth
+const OPENINGS: [number, number, number, number][] = [
+  [ENTRANCE_X - DOOR_W / 2, ENTRANCE_X + DOOR_W / 2, 0, DOOR_H],
+  [-windowOuter, -windowInner, WINDOW_BOTTOM, WINDOW_TOP],
+  [windowInner, windowOuter, WINDOW_BOTTOM, WINDOW_TOP],
+]
+// The solid wall around them
+const FRONT_WALL_PIECES: [number, number, number, number][] = [
+  [-halfW, halfW, DOOR_H, STORE_HEIGHT],
+  ...[-1, 1].flatMap((side): [number, number, number, number][] => {
+    const span = (a: number, b: number): [number, number] => (side < 0 ? [-b, -a] : [a, b])
+    return [
+      [...span(windowOuter, halfW), 0, DOOR_H],
+      [...span(DOOR_W / 2, windowInner), 0, DOOR_H],
+      [...span(windowInner, windowOuter), 0, WINDOW_BOTTOM],
+      [...span(windowInner, windowOuter), WINDOW_TOP, DOOR_H],
+    ]
+  }),
+]
 
 const LIGHT_INTENSITY = 1.25
 // Panels (by grid fraction) whose tubes are dead, and one on its way out
@@ -94,6 +128,24 @@ function FlickerPanel({ position }: { position: [number, number, number] }) {
       <PanelCover position={position} coverRef={cover} />
     </>
   )
+}
+
+// Night-time panorama seen through the windows, turned so the street lamp
+// sits out front
+function NightSky() {
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    const tex = new TextureLoader().load(nightSkyUrl)
+    tex.mapping = EquirectangularReflectionMapping
+    tex.colorSpace = SRGBColorSpace
+    scene.background = tex
+    scene.backgroundRotation.set(0, -Math.PI / 2, 0)
+    return () => {
+      scene.background = null
+      tex.dispose()
+    }
+  }, [scene])
+  return null
 }
 
 // Drop-ceiling tiles with glowing light panels, just under the ceiling slab
@@ -144,6 +196,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
   return (
     <group ref={ref}>
+      <NightSky />
       {/* shell */}
       <Block size={[STORE_WIDTH, WALL, depth]} position={[0, -WALL / 2, centerZ]} color={FLOOR_COLOR} />
       <Carpet width={STORE_WIDTH} depth={depth} z={centerZ} />
@@ -154,7 +207,17 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </>
       )}
       <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, BACK_Z]} color={WALL_COLOR} textures={WALLPAPER} />
-      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, FRONT_Z]} color={WALL_COLOR} textures={WALLPAPER} />
+      {/* front wall, built around real openings for the door and windows */}
+      {FRONT_WALL_PIECES.map(([x0, x1, y0, y1]) => (
+        <Block
+          key={`${x0},${y0}`}
+          size={[x1 - x0, y1 - y0, WALL]}
+          position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}
+          color={WALL_COLOR}
+          textures={WALLPAPER}
+          alignUv
+        />
+      ))}
       <Block size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
       <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
 
@@ -179,17 +242,13 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         />
       ))}
 
-      {/* store front: windows and entrance (decorative) */}
-      {[-1, 1].map((side) => (
-        <Block
-          key={side}
-          size={[windowWidth, 1.2, 0.02]}
-          position={[side * (0.7 + windowWidth / 2), 1.25, frontInner]}
-          color={GLASS}
-          emissive={GLASS_GLOW}
-        />
+      {/* glass in the door and window openings */}
+      {OPENINGS.map(([x0, x1, y0, y1]) => (
+        <mesh key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
+          <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
+          <meshStandardMaterial color={GLASS} transparent opacity={0.12} roughness={0.05} depthWrite={false} />
+        </mesh>
       ))}
-      <Block size={[1, 2, 0.02]} position={[ENTRANCE_X, 1, frontInner]} color={GLASS} emissive={GLASS_GLOW} />
       <Label
         text="ENTRANCE"
         position={[ENTRANCE_X, 2.2, frontInner + 0.01]}
