@@ -16,12 +16,12 @@ import Label from './label'
 
 const WOOD = '#6b4a2b'
 const PANEL = 0.03
-// A VHS box standing spine-out (spine exaggerated so it's easy to click)
-const TAPE_SIZE: [number, number, number] = [0.1, 0.21, 0.13]
-
 // A header panel across the top of the front carries the shelf's sign
 const HEADER = 0.24
 const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
+
+// A VHS box standing spine-out, filling the full height between tier boards
+const TAPE_SIZE: [number, number, number] = [0.085, tierSpacing - PANEL, 0.13]
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
 
 const slotPosition = (tier: number, slot: number): [number, number, number] => [
@@ -50,7 +50,7 @@ function spineTexture(tapeId: string) {
   const tape = snack ? null : tapeById(tapeId)
   const canvas = document.createElement('canvas')
   canvas.width = 96
-  canvas.height = 200
+  canvas.height = Math.round((canvas.width * TAPE_SIZE[1]) / TAPE_SIZE[0])
   const g = canvas.getContext('2d')!
   g.fillStyle = snack ? snack.color : GENRE_COLORS[tape!.genre]
   g.fillRect(0, 0, canvas.width, canvas.height)
