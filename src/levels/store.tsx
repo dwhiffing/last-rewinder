@@ -36,6 +36,7 @@ import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
 import useGameStore from '../stores/gameStore'
+import SegmentDisplay from '../entities/store/segmentDisplay'
 
 const WALL = 0.2
 const halfW = STORE_WIDTH / 2
@@ -465,6 +466,12 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
           color={GENRE_COLORS[tapeById(rewinder.tapeId).genre]}
         />
       )}
+      {/* status readout along the bottom of the front */}
+      <SegmentDisplay
+        text={!rewinder ? 'INSERT TAPE' : done ? 'DONE' : 'REWINDING'}
+        position={[x - 0.035, y + 0.018, z + 0.1205]}
+        width={0.27}
+      />
       <mesh position={[x + 0.16, y + 0.05, z + 0.121]}>
         <boxGeometry args={[0.03, 0.03, 0.005]} />
         <meshBasicMaterial color={!rewinder ? '#333' : done ? '#3cff3c' : '#ff3030'} toneMapped={false} />
