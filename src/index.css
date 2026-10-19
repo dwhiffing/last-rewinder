@@ -637,12 +637,13 @@ body {
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(255, 255, 255, 0.05) 40%,
-    rgba(255, 255, 255, 0.1) 50%,
-    rgba(255, 255, 255, 0.05) 60%,
+    rgba(255, 255, 255, 0.02) 40%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.02) 60%,
     transparent
   );
-  animation: vhsTracking 7s linear infinite;
+  /* same speed as before, but it only rolls by every 14s */
+  animation: vhsTracking 14s linear infinite;
 }
 .vhs-vignette {
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
@@ -656,7 +657,13 @@ body {
 }
 @keyframes vhsTracking {
   0% { transform: translateY(0); }
+  50% { transform: translateY(900%); }
   100% { transform: translateY(900%); }
+}
+.vhs-artefacts {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 @keyframes vhsFlicker {
   0% { opacity: 0.95; }
