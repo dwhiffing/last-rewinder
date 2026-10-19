@@ -14,6 +14,7 @@ import useGameStore from '../../stores/gameStore'
 import Block from './block'
 import { WOOD } from './textures'
 import Label from './label'
+import SodaCan, { CAN_HEIGHT } from './sodaCan'
 
 const PANEL = 0.03
 // A header panel across the top of the front carries the shelf's sign
@@ -95,6 +96,18 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const snack = isSnack(tapeId) ? snackOf(tapeId) : null
   const color = snack ? snack.color : GENRE_COLORS[tapeById(tapeId).genre]
   const label = snack ? `${snack.type} (snack)` : `${tapeById(tapeId).title} (${tapeById(tapeId).genre})`
+  if (snack?.type === 'Soda') {
+    // a can standing on the shelf board
+    const [x, y, z] = position
+    return (
+      <SodaCan
+        key={tapeId}
+        name="tape"
+        userData={{ label, slotId: id }}
+        position={[x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]}
+      />
+    )
+  }
   return (
     // keyed by tape so a swap mounts a fresh mesh and the hover picks it up
     <mesh
