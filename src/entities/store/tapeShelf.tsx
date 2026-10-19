@@ -28,6 +28,9 @@ const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
 const TAPE_SIZE: [number, number, number] = [0.0765, tierSpacing - PANEL, 0.13]
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
 
+const HIT_FRONT = SHELF_DEPTH / 2 + 0.005
+const HIT_BACK = SHELF_DEPTH / 2 - TAPE_SIZE[2] - 0.01
+
 const slotPosition = (tier: number, slot: number): [number, number, number] => [
   -SHELF_WIDTH / 2 + PANEL + slotSpacing * (slot + 0.5),
   tier * tierSpacing + PANEL + TAPE_SIZE[1] / 2,
@@ -123,9 +126,10 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const wide = isWide(tapeId)
   const [x, y, z] = position
   const hit = (
-    // also covers the board below, so there's no gap between rows either
-    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y - PANEL / 2, z]}>
-      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), tierSpacing, TAPE_SIZE[2]]} />
+    // also covers the board below, so there's no gap between rows either, and
+    // reaches just past the boards' front edges so they never catch the pointer
+    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y - PANEL / 2, (HIT_FRONT + HIT_BACK) / 2]}>
+      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), tierSpacing, HIT_FRONT - HIT_BACK]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   )
