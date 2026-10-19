@@ -374,8 +374,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </mesh>
       ))}
 
-      {/* in a blackout only faint streetlight from outside reaches in */}
-      <ambientLight intensity={powerOut ? 0.12 : 0} color="#6f86c4" />
+      {/* in a blackout the room is near black; only glowing screens light it */}
+      <ambientLight intensity={powerOut ? 0.012 : 0} color="#6f86c4" />
 
       {/* one light under each working ceiling light panel */}
       {LIGHT_FRACTIONS.flatMap((fx) =>
@@ -411,6 +411,7 @@ export default Store
 // many orders are waiting.
 function Computer({ position }: { position: [number, number, number] }) {
   const count = useGameStore((s) => s.orders.length)
+  const powerOut = useGameStore((s) => s.powerOut)
   const [x, y, z] = position
   return (
     <group name="computer" userData={{ label: 'Order computer' }}>
@@ -426,6 +427,8 @@ function Computer({ position }: { position: [number, number, number] }) {
         color="#4cff4c"
         glow
       />
+      {/* the screen's own glow, which only shows once the lights are out */}
+      <pointLight position={[x, y + 0.22, z + MONITOR_DEPTH / 2 + 0.1]} color="#4cff4c" intensity={powerOut ? 0.25 : 0} distance={1.6} decay={2} />
       {/* keyboard */}
       <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + MONITOR_DEPTH / 2 + 0.16]} color="#cfc9b8" />
     </group>
@@ -455,6 +458,7 @@ function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
 function TapeRewinder({ position }: { position: [number, number, number] }) {
   const rewinder = useGameStore((s) => s.rewinder)
   const done = useGameStore((s) => !!s.rewinder && s.rewinder.doneAt <= s.time)
+  const powerOut = useGameStore((s) => s.powerOut)
   const [x, y, z] = position
   return (
     <group name="rewinder" userData={{ label: 'Tape rewinder' }}>
@@ -466,6 +470,7 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
           color={GENRE_COLORS[tapeById(rewinder.tapeId).genre]}
         />
       )}
+      <pointLight position={[x - 0.035, y + 0.03, z + 0.18]} color="#3cff3c" intensity={powerOut ? 0.04 : 0} distance={0.6} decay={2} />
       {/* status readout along the bottom of the front */}
       <SegmentDisplay
         text={!rewinder ? 'INSERT TAPE' : done ? 'DONE' : 'REWINDING'}
