@@ -140,10 +140,13 @@ function LookPrompt() {
   const hovered = useGameStore((s) => s.hovered)
   // re-read the rest of the state whenever the hint text would change
   const hint = useGameStore((s) => (s.hovered ? actionHint(s.hovered.kind, s) : null))
+  const dark = useGameStore((s) => s.powerOut)
   if (!hovered) return null
+  // too dark to read a tape's label
+  const label = dark && hovered.kind === 'tape' && !hovered.label.endsWith('(snack)') ? 'A tape' : hovered.label
   return (
     <div className="look-prompt">
-      {hovered.label}
+      {label}
       {hint && <span className="look-hint">{hint}</span>}
     </div>
   )
@@ -155,6 +158,8 @@ const genreColor = (g: string) => GENRE_COLORS[g as keyof typeof GENRE_COLORS]
 function CarriedStack() {
   const carried = useGameStore((s) => s.carried)
   const needsRewind = useGameStore((s) => s.needsRewind)
+  // re-render when the lights go out so the titles are hidden
+  useGameStore((s) => s.powerOut)
   return (
     <div className="carried">
       <div className="carried-title">
@@ -338,7 +343,26 @@ function OrdersScreen() {
   const close = useGameStore((s) => s.setComputerOpen)
   const day = useGameStore((s) => s.day)
   const time = useClock()
+  const powerOut = useGameStore((s) => s.powerOut)
+  const restorePower = useGameStore((s) => s.restorePower)
   if (!open) return null
+  if (powerOut)
+    return (
+      <div className="computer" onPointerDown={(e) => e.target === e.currentTarget && close(false)}>
+        <div className="computer-screen power-screen">
+          <div className="computer-title">
+            <span>POWER FAILURE</span>
+            <button className="computer-close" onClick={() => close(false)} aria-label="Close">
+              {'\u2715'}
+            </button>
+          </div>
+          <div className="computer-hint">Running on backup battery. Orders are still ticking.</div>
+          <button className="restore-power" onClick={() => restorePower()}>
+            Restore power
+          </button>
+        </div>
+      </div>
+    )
   return (
     <div className="computer" onPointerDown={(e) => e.target === e.currentTarget && close(false)}>
       <div className="computer-screen">
@@ -407,7 +431,10 @@ function TapeCard() {
   const flipped = useGameStore((s) => s.coverFlipped)
   const flip = useGameStore((s) => s.flipCover)
   const unrewound = useGameStore((s) => !!top && !!s.needsRewind[top])
+  const dark = useGameStore((s) => s.powerOut)
   if (!top) return null
+  // can't read the box in the dark
+  if (dark && !isSnack(top)) return null
   if (isSnack(top)) {
     const snack = snackOf(top)
     return (
@@ -492,6 +519,7 @@ function DebugButtons() {
     <div className="debug-buttons">
       <button onClick={() => skipDay()}>Skip day</button>
       <button onClick={() => addMoney()}>+$5</button>
+      <button onClick={() => useGameStore.setState({ powerOut: true })}>Power cut</button>
     </div>
   )
 }

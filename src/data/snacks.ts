@@ -32,7 +32,11 @@ export const snackOf = (id: string) => {
 }
 
 // Display name for any item in the store: a tape's title or a snack's type
-export const itemName = (id: string) => (isSnack(id) ? snackOf(id).type : tapeById(id).title)
+// In a blackout you can't read tape labels, so titles are hidden everywhere
+let namesHidden = false
+export const setNamesHidden = (hidden: boolean) => (namesHidden = hidden)
+export const itemName = (id: string) =>
+  isSnack(id) ? snackOf(id).type : namesHidden ? 'a tape' : tapeById(id).title
 
 // Box color for any item
 export const itemColor = (id: string, genreColor: (genre: string) => string) =>

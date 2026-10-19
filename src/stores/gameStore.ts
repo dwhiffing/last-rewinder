@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { ALL_SLOT_IDS, coveringSlot, neighbourSlot, SLOTS_PER_TIER, slotId } from '../data/storeLayout'
 import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
-import { isSnack, isWide, itemName, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
+import { isSnack, isWide, itemName, setNamesHidden, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
 import { TAPES, tapeById } from '../data/tapes'
 import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
 
@@ -72,6 +72,10 @@ export interface GameState {
   nextOrderId: number
   ordersFilled: number
   computerOpen: boolean
+  // the lights are out until the power is restored from the computer
+  powerOut: boolean
+  // when today's outage hits (game seconds), if it hasn't yet
+  outageAt: number | null
   // the top tape's card shows its back
   coverFlipped: boolean
   day: number
@@ -117,6 +121,7 @@ export interface GameState {
   startNextDay: () => void
   setComputerOpen: (open: boolean) => void
   flipCover: () => void
+  restorePower: () => void
 }
 
 const SOUND_MODE_KEY = 'soundMode'
@@ -171,6 +176,10 @@ function initialStock() {
   return { slots, stockPool: catalogue.slice(STARTING_TAPES), nextSnackId }
 }
 
+// Blackouts start on day 2, somewhere this many game seconds into the day
+const OUTAGE_FROM_DAY = 2
+const OUTAGE_WINDOW = [15, 60]
+
 const emptyDay = (): DaySummary => ({ filled: 0, missed: 0, earned: 0 })
 
 const freshState = () => ({
@@ -188,6 +197,8 @@ const freshState = () => ({
   nextOrderId: 1,
   ordersFilled: 0,
   computerOpen: false,
+  powerOut: false,
+  outageAt: null as number | null,
   coverFlipped: false,
   day: 1,
   dayOver: null,
@@ -397,6 +408,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (wasRewinding && s.rewinder!.doneAt <= time) {
       playInteract()
       s.showMessage(`${itemName(s.rewinder!.tapeId)} is rewound`)
+    }
+
+    // From day 2 the power cuts out once at a random point in the day
+    if (s.outageAt !== null && time >= s.outageAt) {
+      playError()
+      set({ powerOut: true, outageAt: null })
+      s.showMessage('The power went out! Restore it from the computer')
     }
 
     const expired = s.orders.filter((o) => o.expiresAt <= time)
@@ -616,6 +634,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       schedule: daySchedule(orderRand, day, s.stockPool.length),
       today: emptyDay(),
       nextOrderAt: s.time + FIRST_ORDER_AT,
+      powerOut: false,
+      outageAt: day >= OUTAGE_FROM_DAY ? s.time + OUTAGE_WINDOW[0] + Math.random() * (OUTAGE_WINDOW[1] - OUTAGE_WINDOW[0]) : null,
       rented: s.rented.filter((r) => r.returnDay > day),
       incoming: [],
       returnBox: [...s.returnBox, ...freeSnacks, ...arrivals, ...shuffle(orderRand, due)],
@@ -628,8 +648,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
   },
   setComputerOpen: (computerOpen) => set({ computerOpen }),
+  restorePower: () => {
+    playInteract()
+    set({ powerOut: false })
+  },
   flipCover: () => set((s) => ({ coverFlipped: !s.coverFlipped })),
 }))
+
+// keep tape titles hidden for exactly as long as the lights are out
+useGameStore.subscribe((s) => setNamesHidden(s.powerOut))
 
 export default useGameStore
 

@@ -775,3 +775,20 @@ body {
   width: 100% !important;
   height: 390px !important;
 }
+
+.restore-power {
+  display: block;
+  margin: 24px auto;
+  padding: 14px 28px;
+  font: inherit;
+  font-size: 18px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #0b1a0b;
+  background: #4cff4c;
+  border: none;
+  cursor: pointer;
+}
+.restore-power:hover {
+  background: #8dff8d;
+}

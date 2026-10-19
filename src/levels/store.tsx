@@ -144,9 +144,10 @@ function FlickerPanel({ position }: { position: [number, number, number] }) {
   useFrame((_, delta) => {
     if (burst.current > 0) burst.current -= delta
     else if (Math.random() < delta / 25) burst.current = 0.3 + Math.random() * 1.2
-    const off = burst.current > 0 && Math.random() < 0.5
+    const powerOut = useGameStore.getState().powerOut
+    const off = powerOut || (burst.current > 0 && Math.random() < 0.5)
     if (light.current) light.current.intensity = off ? 0 : LIGHT_INTENSITY
-    if (cover.current) cover.current.visible = off
+    if (cover.current) cover.current.visible = off && !powerOut
   })
   return (
     <>
@@ -192,6 +193,7 @@ function NightSky() {
 
 // Drop-ceiling tiles with glowing light panels, just under the ceiling slab
 function Ceiling() {
+  const powerOut = useGameStore((s) => s.powerOut)
   const maps = useMemo(() => {
     const { map, normalMap, roughnessMap, emissiveMap } = CEILING
     return [map!, normalMap, roughnessMap!, emissiveMap!].map((t) => {
@@ -212,7 +214,7 @@ function Ceiling() {
         roughnessMap={maps[2]}
         emissiveMap={maps[3]}
         emissive="#ffffff"
-        emissiveIntensity={1.2}
+        emissiveIntensity={powerOut ? 0 : 1.2}
       />
     </mesh>
   )
@@ -221,6 +223,7 @@ function Ceiling() {
 // Placeholder video store. Front of the store (entrance, counter, drop bin)
 // is at -z, shelves fill the back half.
 export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
+  const powerOut = useGameStore((s) => s.powerOut)
   const world = useWorld()
   const ref = useRef<Group>(null)
 
@@ -370,6 +373,9 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </mesh>
       ))}
 
+      {/* in a blackout only faint streetlight from outside reaches in */}
+      <ambientLight intensity={powerOut ? 0.12 : 0} color="#6f86c4" />
+
       {/* one light under each working ceiling light panel */}
       {LIGHT_FRACTIONS.flatMap((fx) =>
         LIGHT_FRACTIONS.map((fz) => {
@@ -381,7 +387,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
             <pointLight
               key={key}
               position={[position[0], STORE_HEIGHT - 0.15, position[2]]}
-              intensity={LIGHT_INTENSITY}
+              intensity={powerOut ? 0 : LIGHT_INTENSITY}
               distance={5}
               color="#eef8ff"
               castShadow={SHADOW_LIGHTS.includes(key)}
