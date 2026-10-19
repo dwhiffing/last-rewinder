@@ -92,14 +92,19 @@ function drawSpine(
   g.rotate(-Math.PI / 2)
   g.fillStyle = '#1328C6'
   g.textAlign = 'center'
-  g.textBaseline = 'middle'
+  g.textBaseline = 'alphabetic'
   const title = (snack ? snack.type : tape!.title).toUpperCase()
   const lines = title.length > 12 ? splitInTwo(title) : [title]
   // marker capitals sit well inside their em box, so lines can stack tightly
   const size = W * (lines.length > 1 ? 0.44 : 0.54)
   g.font = `${size}px "Permanent Marker", sans-serif`
+  // centre the drawn capitals across the spine (the font's own middle sits
+  // low, which pushed the text off the right edge of the label)
+  const cap = g.measureText('H')
+  const capH = cap.actualBoundingBoxAscent - cap.actualBoundingBoxDescent
+  const lineH = size * 0.82
   lines.forEach((line, i) => {
-    const y = (i - (lines.length - 1) / 2) * size * 0.82 + size * 0.06
+    const y = (i - (lines.length - 1) / 2) * lineH + capH / 2 - W * 0.02
     g.fillText(line, 0, y, labelH - W * 0.12)
   })
 }
