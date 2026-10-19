@@ -36,11 +36,11 @@ export const lengthOf = (minutes: number): Length =>
 
 export const GENRE_COLORS: Record<Genre, string> = {
   Action: '#c0392b',
-  Comedy: '#f1c40f',
+  Comedy: '#ff7a1a',
   Drama: '#8e44ad',
   Horror: '#2c3e50',
   'Sci-Fi': '#16a085',
-  Family: '#e67e22',
+  Family: '#e84393',
 }
 
 const TITLES: Record<Genre, string[]> = {

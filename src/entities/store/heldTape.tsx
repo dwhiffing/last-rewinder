@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, SRGBColorSpace, type Group } from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../../data/tapes'
 import { spineTexture } from './tapeShelf'
 
@@ -8,6 +9,8 @@ import { spineTexture } from './tapeShelf'
 // and the blurb on the back. Sizes in metres, art drawn at PX pixels per CSS
 // pixel of the old 170x250 card.
 export const CASE_SIZE: [number, number, number] = [0.17, 0.25, 0.035]
+// slightly rounded corners and edges, like a moulded plastic case
+const caseGeometry = new RoundedBoxGeometry(...CASE_SIZE, 3, 0.006)
 const CARD_W = 170
 const CARD_H = 250
 const PX = 4
@@ -172,8 +175,7 @@ export function HeldTape({ tapeId, unrewound, flipped }: { tapeId: string; unrew
   const edge = '#151515'
   return (
     <group ref={ref}>
-      <mesh>
-        <boxGeometry args={CASE_SIZE} />
+      <mesh geometry={caseGeometry}>
         {/* faces: +x, -x (spines), +y, -y, +z (front cover), -z (back cover) */}
         <meshStandardMaterial attach="material-0" map={spine} roughness={0.6} />
         <meshStandardMaterial attach="material-1" map={spine} roughness={0.6} />
