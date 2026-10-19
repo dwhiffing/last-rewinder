@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ALL_SLOT_IDS } from '../data/storeLayout'
+import { ALL_SLOT_IDS, SLOTS_PER_TIER, slotId } from '../data/storeLayout'
 import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
 import { isSnack, itemName, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
@@ -150,7 +150,19 @@ function initialStock() {
   const slots: Record<string, string | null> = {}
   for (const id of ALL_SLOT_IDS) slots[id] = null
   catalogue.slice(0, STARTING_TAPES).forEach((tapeId, i) => (slots[slotIds[i]] = tapeId))
-  return { slots, stockPool: catalogue.slice(STARTING_TAPES) }
+
+  // A starter stock of 2-3 of each snack, grouped by type along the
+  // eye-level tiers of shelf H
+  let nextSnackId = 1
+  const snackSlots = [4, 3].flatMap((tier) =>
+    Array.from({ length: SLOTS_PER_TIER }, (_, i) => slotId('H', tier, i)),
+  )
+  let next = 0
+  for (const type of SNACK_TYPES) {
+    const count = 2 + Math.floor(rand() * 2)
+    for (let i = 0; i < count; i++) slots[snackSlots[next++]] = snackId(type, nextSnackId++)
+  }
+  return { slots, stockPool: catalogue.slice(STARTING_TAPES), nextSnackId }
 }
 
 const emptyDay = (): DaySummary => ({ filled: 0, missed: 0, earned: 0 })
@@ -180,7 +192,6 @@ const freshState = () => ({
   rented: [] as { tapeId: string; returnDay: number }[],
   schedule: daySchedule(orderRand, 1, 0),
   incoming: [] as string[],
-  nextSnackId: 1,
   rentDue: FIRST_RENT,
   gameOver: null,
 })
