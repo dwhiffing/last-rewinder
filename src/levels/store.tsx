@@ -33,6 +33,7 @@ import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
 import Poster from '../entities/store/poster'
+import Door from '../entities/store/door'
 import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
@@ -289,21 +290,14 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         />
       ))}
 
-      {/* glass in the door and window openings */}
-      {OPENINGS.map(([x0, x1, y0, y1]) => (
+      {/* glass in the windows, and the shop door */}
+      {OPENINGS.slice(1).map(([x0, x1, y0, y1]) => (
         <mesh key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
           <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
           <meshStandardMaterial color={GLASS} transparent opacity={0.12} roughness={0.05} depthWrite={false} />
         </mesh>
       ))}
-      <Label
-        text="ENTRANCE"
-        position={[ENTRANCE_X, 2.2, frontInner + 0.01]}
-        width={1}
-        height={0.2}
-        background={TRIM_COLOR}
-        color="#ffd400"
-      />
+      <Door position={[ENTRANCE_X, 0, FRONT_Z]} width={DOOR_W} height={DOOR_H} />
 
       {/* checkout counter, customers stand between it and the front wall */}
       <group name="counter" userData={{ label: 'Counter' }}>
