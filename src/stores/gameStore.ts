@@ -138,7 +138,12 @@ let orderRand = mulberry32(Date.now())
 function initialStock() {
   const rand = mulberry32(1987)
   const catalogue = shuffle(rand, TAPES.map((t) => t.id))
-  const slotIds = shuffle(rand, ALL_SLOT_IDS)
+  // The middle units (F|H and G|I) start empty so there's room to organize
+  const startShelves = ['A', 'B', 'C', 'D', 'E']
+  const slotIds = shuffle(
+    rand,
+    ALL_SLOT_IDS.filter((id) => startShelves.some((shelf) => id.startsWith(`${shelf}-`))),
+  )
   const slots: Record<string, string | null> = {}
   for (const id of ALL_SLOT_IDS) slots[id] = null
   catalogue.slice(0, STARTING_TAPES).forEach((tapeId, i) => (slots[slotIds[i]] = tapeId))
