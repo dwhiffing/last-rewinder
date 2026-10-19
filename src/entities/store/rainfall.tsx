@@ -26,7 +26,7 @@ const vertexShader = /* glsl */ `
 const fragmentShader = /* glsl */ `
   varying float vEnd;
   void main() {
-    gl_FragColor = vec4(vec3(0.62, 0.68, 0.78), mix(0.05, 0.35, vEnd));
+    gl_FragColor = vec4(vec3(0.62, 0.68, 0.78), mix(0.05, 0.35, vEnd) * 0.3);
     #include <colorspace_fragment>
   }
 `
