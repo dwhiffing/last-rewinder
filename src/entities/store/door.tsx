@@ -1,3 +1,7 @@
+import { useFrame } from '@react-three/fiber'
+import { useRef } from 'react'
+import { type Group } from 'three'
+import { DOOR_RATTLE_SECONDS } from '../sounds'
 import Label from './label'
 import RainGlass from './rainGlass'
 import { glassTexture } from './textures'
@@ -8,6 +12,12 @@ import { glassTexture } from './textures'
 const ALUMINIUM = '#b9ab8f'
 const FRAME = 0.05
 const DEPTH = 0.045
+
+// The door is locked: trying it rattles the leaf in its frame for a moment
+let shakeStartedAt = -Infinity
+export function shakeDoor() {
+  shakeStartedAt = performance.now()
+}
 
 function Bar({ size, position }: { size: [number, number, number]; position: [number, number, number] }) {
   return (
@@ -49,15 +59,33 @@ export function Door({
   const midHigh = 1.15
   const paneW = leafW - stile * 2
   const y0 = 0.01 // leaf bottom
+  const leaf = useRef<Group>(null)
+  useFrame(() => {
+    if (!leaf.current) return
+    const t = (performance.now() - shakeStartedAt) / 1000
+    if (t >= DOOR_RATTLE_SECONDS) {
+      leaf.current.position.set(0, 0, 0)
+      leaf.current.rotation.set(0, 0, 0)
+      return
+    }
+    const left = 1 - t / DOOR_RATTLE_SECONDS
+    // yanked against the latch and banging back a few times, rocking and
+    // jiggling in the frame, fading as it settles
+    leaf.current.position.z = -Math.abs(Math.sin(t * 38)) * 0.04 * left
+    leaf.current.position.x = Math.sin(t * 70) * 0.012 * left
+    leaf.current.rotation.y = Math.sin(t * 38) * 0.035 * left
+    leaf.current.rotation.z = Math.sin(t * 55) * 0.008 * left
+  })
   return (
-    <group position={position}>
+    <group position={position} name="door" userData={{ label: 'Front door' }}>
       {/* frame: two jambs and a header */}
       {[-1, 1].map((s) => (
         <Bar key={s} size={[FRAME, height, DEPTH + 0.02]} position={[s * (width / 2 - FRAME / 2), height / 2, 0]} />
       ))}
       <Bar size={[width, FRAME, DEPTH + 0.02]} position={[0, height - FRAME / 2, 0]} />
 
-      {/* leaf: stiles and rails */}
+      <group ref={leaf}>
+        {/* leaf: stiles and rails */}
       {[-1, 1].map((s) => (
         <Bar key={s} size={[stile, leafH, DEPTH]} position={[s * (leafW / 2 - stile / 2), y0 + leafH / 2, 0]} />
       ))}
@@ -83,6 +111,7 @@ export function Door({
         color="#f2f2f2"
         align="left"
       />
+      </group>
 
       {/* door closer on the wall above the frame, its arm reaching to the header
           (the wall's inside face is 0.1 in front of the door) */}

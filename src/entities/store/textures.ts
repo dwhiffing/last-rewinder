@@ -61,7 +61,7 @@ export const SCUFFS: TextureSet = {
   map: load(scuffsColor, true),
   normalMap: load(scuffsNormal),
   normalScale: 0.7,
-  tile: 1.5,
+  tile: 0.75,
 }
 
 export const CEILING: TextureSet = {

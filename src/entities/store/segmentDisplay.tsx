@@ -86,14 +86,16 @@ export function SegmentDisplay({
   text,
   position,
   width,
+  visible = true,
 }: {
   text: string
   position: [number, number, number]
   width: number
+  visible?: boolean
 }) {
   const height = (width * CELL_H) / (DIGITS * CELL_W + 2 * PAD)
   return (
-    <mesh position={position}>
+    <mesh position={position} visible={visible}>
       <planeGeometry args={[width, height]} />
       <meshBasicMaterial map={segmentTexture(text)} toneMapped={false} />
     </mesh>

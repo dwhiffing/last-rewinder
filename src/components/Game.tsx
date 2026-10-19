@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { processMountQueue } from '../entities/mountScheduler'
 import { CrtWarp } from './CrtWarp'
 import { VhsOverlay } from './VhsOverlay'
+import { playDayEnd } from '../entities/sounds'
 import { resetNav } from '../entities/controller/nav'
 
 import { PerformanceMonitor, Preload } from '@react-three/drei'
@@ -344,15 +345,16 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
             Not in stock
           </button>
         )}
-        <button
-          className="order-submit"
-          disabled={done < order.items.length}
-          onClick={(e) => {
-            e.stopPropagation()
-            submit(order.id)
-          }}>
-          Submit
-        </button>
+        {done === order.items.length && (
+          <button
+            className="order-submit"
+            onClick={(e) => {
+              e.stopPropagation()
+              submit(order.id)
+            }}>
+            Submit
+          </button>
+        )}
       </div>
     </div>
   )
@@ -489,14 +491,28 @@ function TapeCard() {
 }
 
 // End of day: what happened today and a button to open tomorrow
+// The store fades to black first; then the summary comes up with its sound
+const DAY_END_FADE_MS = 1000
 function DaySummaryScreen() {
   const summary = useGameStore((s) => s.dayOver)
   const day = useGameStore((s) => s.day)
   const money = useGameStore((s) => s.money)
   const next = useGameStore((s) => s.startNextDay)
+  const [revealed, setRevealed] = useState(false)
+  const ended = !!summary
+  useEffect(() => {
+    setRevealed(false)
+    if (!ended) return
+    const timer = window.setTimeout(() => {
+      setRevealed(true)
+      playDayEnd()
+    }, DAY_END_FADE_MS)
+    return () => window.clearTimeout(timer)
+  }, [ended])
   if (!summary) return null
   return (
-    <div className="day-summary">
+    <div className="day-summary day-end" style={{ animationDuration: `${DAY_END_FADE_MS}ms` }}>
+      {revealed && (
       <div className="day-summary-card">
         <h2>Day {day} is over</h2>
         <div>Orders filled: {summary.filled}</div>
@@ -506,6 +522,7 @@ function DaySummaryScreen() {
         <div className="day-summary-total">Total: ${money}</div>
         <button onClick={() => next()}>Open day {day + 1}</button>
       </div>
+      )}
     </div>
   )
 }
@@ -548,11 +565,37 @@ function DebugButtons() {
   )
 }
 
+// A small white dot in place of the system cursor during play, fading back
+// while it's over something you can interact with
+function CustomCursor() {
+  const ref = useRef<HTMLDivElement>(null)
+  const inGame = useGameStore((s) => s.scene === 'game')
+  const onItem = useGameStore((s) => !!s.hovered)
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const dot = ref.current
+      if (e.pointerType !== 'mouse' || !dot) return
+      dot.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`
+      dot.style.display = 'block'
+    }
+    window.addEventListener('pointermove', move)
+    return () => window.removeEventListener('pointermove', move)
+  }, [])
+  useEffect(() => {
+    if (!inGame) return
+    document.documentElement.classList.add('hide-cursor')
+    return () => document.documentElement.classList.remove('hide-cursor')
+  }, [inGame])
+  if (!inGame) return null
+  return <div ref={ref} className={`custom-cursor ${onItem ? 'dim' : ''}`} aria-hidden />
+}
+
 function Hud() {
   return (
     <>
+      <CustomCursor />
       <VhsOverlay />
-      <DebugButtons />
+      {import.meta.env.DEV && <DebugButtons />}
       <GameOverScreen />
       <DaySummaryScreen />
       <LookPrompt />

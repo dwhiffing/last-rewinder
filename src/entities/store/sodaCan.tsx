@@ -4,7 +4,7 @@ import colaUrl from '../../assets/cola.webp'
 // A soda can. The texture holds the lid and base as two circles across the
 // top half, and the label wrap across the bottom half.
 export const CAN_HEIGHT = 0.15
-const CAN_RADIUS = 0.038
+export const CAN_RADIUS = 0.038
 
 const loader = new TextureLoader()
 function region(repeatX: number, repeatY: number, offsetX: number, offsetY: number) {
@@ -33,7 +33,7 @@ export function SodaCan({
   userData?: Record<string, unknown>
 }) {
   return (
-    <mesh name={name} userData={userData} position={position} castShadow receiveShadow>
+    <mesh name={name} userData={userData} position={position} receiveShadow>
       <cylinderGeometry args={[CAN_RADIUS, CAN_RADIUS, CAN_HEIGHT, 24]} />
       {/* cylinder groups: 0 side, 1 top, 2 bottom */}
       <meshStandardMaterial attach="material-0" map={SIDE} metalness={0.4} roughness={0.35} />

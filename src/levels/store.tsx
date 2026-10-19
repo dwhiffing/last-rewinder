@@ -4,6 +4,7 @@ import {
   type Group,
   type Mesh as ThreeMesh,
   type PointLight,
+  Vector3,
 } from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import {
@@ -23,6 +24,7 @@ import {
   STORE_WIDTH,
 } from '../data/storeLayout'
 import Block from '../entities/store/block'
+import { type RewindSound, startRewindSound } from '../entities/sounds'
 import Carpet from '../entities/store/carpet'
 import { CEILING, glassTexture, NIGHT_SKY, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
@@ -71,6 +73,9 @@ const OPENINGS: [number, number, number, number][] = [
   [-windowOuter, -windowInner, WINDOW_BOTTOM, WINDOW_TOP],
   [windowInner, windowOuter, WINDOW_BOTTOM, WINDOW_TOP],
 ]
+// Walls can be tapped (with empty hands)
+const WALL_LABEL = { label: 'Wall' }
+
 // The solid wall around them
 const FRONT_WALL_PIECES: [number, number, number, number][] = [
   [-halfW, halfW, DOOR_H, STORE_HEIGHT],
@@ -255,7 +260,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
           <Ceiling />
         </>
       )}
-      <Block size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, BACK_Z]} color={WALL_COLOR} textures={WALLPAPER} />
+      <Block name="wall" userData={WALL_LABEL} size={[STORE_WIDTH, STORE_HEIGHT, WALL]} position={[0, STORE_HEIGHT / 2, BACK_Z]} color={WALL_COLOR} textures={WALLPAPER} />
       {/* front wall, built around real openings for the door and windows */}
       {FRONT_WALL_PIECES.map(([x0, x1, y0, y1]) => (
         <Block
@@ -265,10 +270,12 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
           color={WALL_COLOR}
           textures={WALLPAPER}
           alignUv
+          name="wall"
+          userData={WALL_LABEL}
         />
       ))}
-      <Block size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
-      <Block size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
+      <Block name="wall" userData={WALL_LABEL} size={[WALL, STORE_HEIGHT, depth]} position={[halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
+      <Block name="wall" userData={WALL_LABEL} size={[WALL, STORE_HEIGHT, depth]} position={[-halfW, STORE_HEIGHT / 2, centerZ]} color={WALL_COLOR} textures={WALLPAPER} />
 
       {/* wooden baseboard around the inside of the walls, broken at the door */}
       <Block size={[STORE_WIDTH - WALL, BASE_H, BASE_T]} position={[0, BASE_H / 2, BACK_Z - WALL / 2 - BASE_T / 2]} color="#ffffff" textures={WOOD} />
@@ -293,7 +300,11 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* glass in the windows, and the shop door */}
       {OPENINGS.slice(1).map(([x0, x1, y0, y1]) => (
-        <group key={`${x0},${y0}`} position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
+        <group
+          key={`${x0},${y0}`}
+          name="window"
+          userData={{ label: 'Window' }}
+          position={[(x0 + x1) / 2, (y0 + y1) / 2, FRONT_Z]}>
           <mesh>
             <boxGeometry args={[x1 - x0, y1 - y0, 0.01]} />
             <meshStandardMaterial map={glassTexture(x1 - x0, y1 - y0)} transparent roughness={0.1} depthWrite={false} />
@@ -314,13 +325,15 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz - COUNTER_SIZE[2] / 2 + 0.02 + MONITOR_DEPTH / 2]} />
 
       {/* rewinder table against the left wall, between shelf A and the counter */}
-      <Block
-        size={REWINDER_TABLE_SIZE}
-        position={[rx, REWINDER_TABLE_SIZE[1] / 2, rz]}
-        color={TRIM_COLOR}
-        textures={SCUFFS}
-      />
-      <TableTop width={REWINDER_TABLE_SIZE[0]} depth={REWINDER_TABLE_SIZE[2]} position={[rx, REWINDER_TABLE_SIZE[1], rz]} />
+      <group name="table" userData={{ label: 'Table' }}>
+        <Block
+          size={REWINDER_TABLE_SIZE}
+          position={[rx, REWINDER_TABLE_SIZE[1] / 2, rz]}
+          color={TRIM_COLOR}
+          textures={SCUFFS}
+        />
+        <TableTop width={REWINDER_TABLE_SIZE[0]} depth={REWINDER_TABLE_SIZE[2]} position={[rx, REWINDER_TABLE_SIZE[1], rz]} />
+      </group>
       <group position={[rx, REWINDER_TABLE_SIZE[1] + TOP_H, rz]} rotation={[0, Math.PI / 2, 0]} scale={1.2}>
         <TapeRewinder position={[0, 0.005, 0]} />
       </group>
@@ -425,12 +438,12 @@ function Computer({ position }: { position: [number, number, number] }) {
         position={[x, y + 0.22, z + MONITOR_DEPTH / 2 + 0.005]}
         width={0.36}
         height={0.27}
-        background={count ? '#0b3d0b' : '#082008'}
-        color="#4cff4c"
+        background={powerOut ? '#3d0b0b' : count ? '#0b3d0b' : '#082008'}
+        color={powerOut ? '#ff4c4c' : '#4cff4c'}
         glow
       />
-      {/* the screen's own glow, which only shows once the lights are out */}
-      <pointLight position={[x, y + 0.22, z + MONITOR_DEPTH / 2 + 0.1]} color="#4cff4c" intensity={powerOut ? 0.25 : 0} distance={1.6} decay={2} />
+      {/* the screen's own glow, which only shows once the lights are out (red, on backup power) */}
+      <pointLight position={[x, y + 0.22, z + MONITOR_DEPTH / 2 + 0.1]} color="#ff4c4c" intensity={powerOut ? 0.25 : 0} distance={1.6} decay={2} />
       {/* keyboard */}
       <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + MONITOR_DEPTH / 2 + 0.16]} color="#cfc9b8" />
     </group>
@@ -449,6 +462,7 @@ function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
           size={[0.21, 0.035, 0.13]}
           position={[x + ((i % 2) - 0.5) * 0.24, y + 0.018 + Math.floor(i / 2) * 0.036, z + ((i % 3) - 1) * 0.04]}
           color={itemColor(id, (g) => GENRE_COLORS[g as keyof typeof GENRE_COLORS])}
+          castShadow={false}
         />
       ))}
     </>
@@ -457,19 +471,58 @@ function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
 
 // Placeholder tape rewinder: a slot on top holds one tape; the light is red
 // while it rewinds and green when the tape is ready to take out
+// How long the readout stays on, then off, while blinking
+const BLINK_INTERVAL = 1
+// The whirr while rewinding: this loud right next to it, quieter the further
+// away you stand (inverse distance, full volume within REWIND_NEAR metres)
+const REWIND_VOLUME = 0.1
+const REWIND_NEAR = 1.5
+const _listener = new Vector3()
+const _source = new Vector3()
 function TapeRewinder({ position }: { position: [number, number, number] }) {
   const rewinder = useGameStore((s) => s.rewinder)
+  const rewindingUntil = useGameStore((s) =>
+    s.rewinder && s.rewinder.doneAt > s.time ? s.rewinder.doneAt : null,
+  )
+  const sound = useRef<RewindSound | null>(null)
+  useEffect(() => {
+    if (rewindingUntil === null) return
+    const playing = startRewindSound(rewindingUntil - useGameStore.getState().time)
+    sound.current = playing
+    return () => {
+      playing.stop()
+      sound.current = null
+    }
+  }, [rewindingUntil])
+  const { camera } = useThree()
+  const anchor = useRef<Group>(null)
+  useFrame(() => {
+    if (!sound.current || !anchor.current) return
+    camera.getWorldPosition(_listener)
+    anchor.current.getWorldPosition(_source)
+    const distance = _listener.distanceTo(_source)
+    sound.current.setVolume(REWIND_VOLUME * Math.min(1, REWIND_NEAR / distance))
+  })
   const done = useGameStore((s) => !!s.rewinder && s.rewinder.doneAt <= s.time)
   const powerOut = useGameStore((s) => s.powerOut)
+  // Idle ("insert tape") and finished ("done") blink slowly so it's obvious
+  // at a glance nothing's actively rewinding; mid-rewind stays solid
+  const blinkOn = useGameStore((s) => {
+    const idle = !s.rewinder || s.rewinder.doneAt <= s.time
+    return !idle || Math.floor(s.time / BLINK_INTERVAL) % 2 === 0
+  })
   const [x, y, z] = position
   return (
     <group name="rewinder" userData={{ label: 'Tape rewinder' }}>
+      {/* where the whirr comes from */}
+      <group ref={anchor} position={position} />
       <Block size={[0.4, 0.1, 0.24]} position={[x, y + 0.03, z]} color="#222" />
       {rewinder && (
         <Block
           size={[0.21, 0.13, 0.035]}
           position={[x, y + 0.13, z]}
           color={GENRE_COLORS[tapeById(rewinder.tapeId).genre]}
+          castShadow={false}
         />
       )}
       <pointLight position={[x - 0.035, y + 0.03, z + 0.18]} color="#3cff3c" intensity={powerOut ? 0.04 : 0} distance={0.6} decay={2} />
@@ -478,6 +531,7 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
         text={!rewinder ? 'INSERT TAPE' : done ? 'DONE' : 'REWINDING'}
         position={[x - 0.035, y + 0.018, z + 0.1205]}
         width={0.27}
+        visible={blinkOn}
       />
       <mesh position={[x + 0.16, y + 0.05, z + 0.121]}>
         <boxGeometry args={[0.03, 0.03, 0.005]} />

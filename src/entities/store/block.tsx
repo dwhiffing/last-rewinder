@@ -8,6 +8,7 @@ export function Block({
   color = '#888',
   emissive,
   textures,
+  castShadow = true,
   alignUv,
   name,
   userData,
@@ -18,6 +19,7 @@ export function Block({
   color?: string
   emissive?: string
   textures?: TextureSet
+  castShadow?: boolean
   // line the texture up with neighbouring blocks (by world position)
   alignUv?: boolean
   name?: string
@@ -30,7 +32,7 @@ export function Block({
   )
   return (
     <mesh
-      castShadow
+      castShadow={castShadow}
       receiveShadow
       position={position}
       name={name}

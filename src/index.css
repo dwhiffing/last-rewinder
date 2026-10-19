@@ -28,7 +28,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
-  z-index: 10;
+  z-index: 1;
   color: white;
   pointer-events: none;
 }
@@ -73,7 +73,7 @@ body {
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 1;
   color: white;
   font-size: 15px;
   text-align: center;
@@ -94,7 +94,7 @@ body {
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 20;
+  z-index: 3;
   display: grid;
   grid-template-columns: repeat(3, 52px);
   gap: 6px;
@@ -121,7 +121,7 @@ body {
   position: fixed;
   top: 52px;
   left: 16px;
-  z-index: 10;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -160,7 +160,7 @@ body {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 10;
+  z-index: 1;
   padding: 10px 12px;
   border-radius: 10px;
   background: rgba(20, 30, 60, 0.6);
@@ -184,7 +184,7 @@ body {
 .computer {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,7 +312,7 @@ body {
   position: fixed;
   left: 16px;
   bottom: 16px;
-  z-index: 15;
+  z-index: 2;
   width: 170px;
   perspective: 800px;
   cursor: pointer;
@@ -441,12 +441,21 @@ body {
 .day-summary {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.7);
   padding: 16px;
+}
+/* end of day: the store fades fully to black before the summary shows */
+.day-summary.day-end {
+  background: black;
+  animation: dayEndFade linear forwards;
+}
+@keyframes dayEndFade {
+  from { background-color: rgba(0, 0, 0, 0); }
+  to { background-color: rgba(0, 0, 0, 1); }
 }
 .day-summary-card {
   display: flex;
@@ -584,7 +593,7 @@ body {
   position: fixed;
   top: 16px;
   left: 16px;
-  z-index: 25;
+  z-index: 3;
   display: flex;
   gap: 6px;
 }
@@ -652,6 +661,40 @@ body {
   );
   /* same speed as before, but it only rolls by every 14s */
   animation: vhsTracking 14s linear infinite;
+}
+/* A faint, always-on wash of chromatic interference noise. Tiled vertically
+   and scrolled continuously downward (never looping back up, like a real
+   tracking roll) while drifting slowly left/right on a sine, so the single
+   static source image never reads as a repeating, static texture. The tile
+   height is fixed in px (not %) so the loop point lines up exactly and the
+   scroll never visibly jumps. */
+.vhs-chroma {
+  background-image: url('./assets/vhs-tracking.webp');
+  background-repeat: repeat-y;
+  background-size: 160% 220px;
+  opacity: 0.12;
+  mix-blend-mode: color-dodge;
+  /* a fast downward roll, with a slow sine sway left/right on its own clock */
+  animation:
+    vhsChromaRoll 0.9s linear infinite,
+    vhsChromaSway 26s linear infinite;
+}
+@keyframes vhsChromaRoll {
+  from { background-position-y: 0px; }
+  to { background-position-y: 220px; }
+}
+@keyframes vhsChromaSway {
+  0%   { background-position-x: 50%; }
+  10%  { background-position-x: 58.8%; }
+  20%  { background-position-x: 64.3%; }
+  30%  { background-position-x: 64.3%; }
+  40%  { background-position-x: 58.8%; }
+  50%  { background-position-x: 50%; }
+  60%  { background-position-x: 41.2%; }
+  70%  { background-position-x: 35.7%; }
+  80%  { background-position-x: 35.7%; }
+  90%  { background-position-x: 41.2%; }
+  100% { background-position-x: 50%; }
 }
 .vhs-vignette {
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
@@ -793,4 +836,27 @@ body {
 }
 .restore-power:hover {
   background: #8dff8d;
+}
+
+/* custom cursor during play: a white dot instead of the system pointer */
+.hide-cursor,
+.hide-cursor * {
+  cursor: none !important;
+}
+.custom-cursor {
+  position: fixed;
+  left: -2.5px;
+  top: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 6;
+  display: none;
+  transition: opacity 0.1s;
+}
+.custom-cursor.dim {
+  opacity: 0.5;
 }

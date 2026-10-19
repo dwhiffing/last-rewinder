@@ -1,3 +1,22 @@
+import { isSnack } from '../data/snacks'
+import clickUrl from '../assets/click.mp3'
+import dayEndUrl from '../assets/day-end.mp3'
+import dropUrl from '../assets/drop.mp3'
+import errorUrl from '../assets/error.mp3'
+import failUrl from '../assets/fail.mp3'
+import tapUrl from '../assets/tap.mp3'
+import wallTapUrl from '../assets/tap-wall.mp3'
+import windowTapUrl from '../assets/window-tap.mp3'
+import lockedDoorUrl from '../assets/locked-door.mp3'
+import pickupUrl from '../assets/pickup.mp3'
+import pickupTapeUrl from '../assets/pickup-tape.mp3'
+import putDownTapeUrl from '../assets/put-down-tape.mp3'
+import typingUrl from '../assets/typing.mp3'
+import powerOffUrl from '../assets/power-off2.mp3'
+import powerOnUrl from '../assets/power-on.mp3'
+import rewindUrl from '../assets/rewind.mp3'
+import rewindTapeUrl from '../assets/rewind-tape.mp3'
+
 const ctx = new AudioContext()
 
 const sfxMaster = ctx.createGain()
@@ -35,7 +54,7 @@ const _stepFilter = ctx.createBiquadFilter()
 _stepFilter.type = 'lowpass'
 _stepFilter.frequency.value = 200
 const _stepGain = ctx.createGain()
-_stepGain.gain.value = 1.35
+_stepGain.gain.value = 2.025
 _stepFilter.connect(_stepGain)
 _stepGain.connect(sfxMaster)
 
@@ -70,11 +89,9 @@ function playTone(freq: number, start: number, dur: number, peak = 0.25) {
   osc.stop(start + dur)
 }
 
-// Placeholder: two-note shop door chime
+// A tape rewinding as the game starts
 export function playGameStart() {
-  const now = ctx.currentTime
-  playTone(880, now, 0.6)
-  playTone(660, now + 0.25, 0.8)
+  playClip(rewindClip, 1, 0.45)
 }
 
 // Placeholder: short click when interacting with something
@@ -82,25 +99,10 @@ export function playInteract() {
   playTone(1200, ctx.currentTime, 0.08, 0.15)
 }
 
-function playBuzz(freq: number, start: number, dur: number, peak = 0.12) {
-  const osc = ctx.createOscillator()
-  osc.type = 'square'
-  osc.frequency.value = freq
-  const gain = ctx.createGain()
-  gain.gain.setValueAtTime(peak, start)
-  gain.gain.setValueAtTime(peak, start + dur - 0.02)
-  gain.gain.linearRampToValueAtTime(0, start + dur)
-  osc.connect(gain)
-  gain.connect(sfxMaster)
-  osc.start(start)
-  osc.stop(start + dur)
-}
-
-// Placeholder: low double buzz when a tape doesn't fit an order
+// Anything you can't do: a tape that doesn't fit, full hands, an unrewound
+// tape you try to shelf, and so on
 export function playError() {
-  const now = ctx.currentTime
-  playBuzz(110, now, 0.12)
-  playBuzz(98, now + 0.15, 0.18)
+  playClip(errorClip, 1, 0.5)
 }
 
 // Placeholder: rising arpeggio when an order is filled
@@ -126,6 +128,13 @@ const _whooshBuffer = (() => {
   for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1
   return buf
 })()
+// Locked door: the leaf rattling against the latch. The door shakes for the
+// length of the clip, then the message shows.
+export const DOOR_RATTLE_SECONDS = 0.78
+export function playDoorRattle() {
+  playClip(lockedDoorClip, 1, 0.25)
+}
+
 export function playWhoosh() {
   const t = ctx.currentTime
   const source = ctx.createBufferSource()
@@ -138,8 +147,160 @@ export function playWhoosh() {
   filter.frequency.exponentialRampToValueAtTime(500, t + 0.25)
   const gain = ctx.createGain()
   gain.gain.setValueAtTime(0, t)
-  gain.gain.linearRampToValueAtTime(0.088, t + 0.08)
+  gain.gain.linearRampToValueAtTime(0.1265, t + 0.08)
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28)
   source.connect(filter).connect(gain).connect(sfxMaster)
   source.start(t)
+}
+
+// Recorded clips, decoded once up front
+function loadClip(url: string) {
+  return fetch(url)
+    .then((r) => r.arrayBuffer())
+    .then((data) => ctx.decodeAudioData(data))
+}
+const powerOffClip = loadClip(powerOffUrl)
+const powerOnClip = loadClip(powerOnUrl)
+const rewindClip = loadClip(rewindUrl)
+const rewindTapeClip = loadClip(rewindTapeUrl)
+const pickupClip = loadClip(pickupUrl)
+const dropClip = loadClip(dropUrl)
+const pickupTapeClip = loadClip(pickupTapeUrl)
+const putDownTapeClip = loadClip(putDownTapeUrl)
+const typingClip = loadClip(typingUrl)
+const lockedDoorClip = loadClip(lockedDoorUrl)
+const errorClip = loadClip(errorUrl)
+const failClip = loadClip(failUrl)
+
+// An order ran out of time
+export function playFail() {
+  playClip(failClip, 1, 0.5)
+}
+const clickClip = loadClip(clickUrl)
+const tapClip = loadClip(tapUrl)
+const windowTapClip = loadClip(windowTapUrl)
+const wallTapClip = loadClip(wallTapUrl)
+
+// Knocking on a wall
+export function playWallTap() {
+  playClip(wallTapClip)
+}
+const dayEndClip = loadClip(dayEndUrl)
+
+// The store closing for the day, as the summary comes up
+export function playDayEnd() {
+  playClip(dayEndClip)
+}
+
+// Knocking on the shop window
+export function playWindowTap() {
+  playClip(windowTapClip)
+}
+
+// Tapping on a shelf with nothing in your hands
+export function playTap() {
+  playClip(tapClip, 1, 0.5)
+}
+
+// Closing the order computer
+export function playClick() {
+  playClip(clickClip, 1, 1.7)
+}
+
+// Tapping at the keyboard as you sit down at the order computer
+export function playTyping() {
+  playClip(typingClip, 1, 0.75)
+}
+
+// A tape or snack coming into your hands, and leaving them
+// Tapes and snacks each have their own sounds
+export function playPickup(itemId: string) {
+  if (isSnack(itemId)) playClip(pickupClip, 1, 1.25)
+  else playClip(pickupTapeClip)
+}
+export function playDrop(itemId: string) {
+  if (isSnack(itemId)) playClip(dropClip)
+  else playClip(putDownTapeClip)
+}
+
+function playClip(clip: Promise<AudioBuffer>, rate = 1, volume = 1) {
+  clip.then((buffer) => {
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.playbackRate.value = rate
+    const gain = ctx.createGain()
+    gain.gain.value = volume
+    source.connect(gain).connect(sfxMaster)
+    source.start()
+  })
+}
+
+// The lights going out, sped up 40%
+export function playPowerOff() {
+  playClip(powerOffClip, 1.4)
+}
+
+export function playPowerOn() {
+  playClip(powerOnClip)
+}
+
+// The rewinder whirring for `seconds`: the clip's first 3 seconds spin it up,
+// the middle loops for as long as it takes, and its last 3 seconds spin it down
+// just as the tape finishes. Volume is set from outside (it follows how close
+// you are) and starts silent until the first setVolume.
+const REWIND_EASE = 3
+const SPLICE = 0.03
+export interface RewindSound {
+  setVolume: (volume: number) => void
+  stop: () => void
+}
+export function startRewindSound(seconds: number): RewindSound {
+  const out = ctx.createGain()
+  out.gain.value = 0
+  out.connect(sfxMaster)
+  const sources: AudioBufferSourceNode[] = []
+  let stopped = false
+
+  rewindTapeClip.then((buffer) => {
+    if (stopped) return
+    const ease = Math.min(REWIND_EASE, buffer.duration / 3)
+    const now = ctx.currentTime
+    const tailStart = now + Math.max(seconds, ease * 2) - ease
+
+    // spin-up, then the middle on a loop until the spin-down takes over
+    const body = ctx.createBufferSource()
+    body.buffer = buffer
+    body.loop = true
+    body.loopStart = ease
+    body.loopEnd = buffer.duration - ease
+    const bodyGain = ctx.createGain()
+    bodyGain.gain.setValueAtTime(1, tailStart - SPLICE)
+    bodyGain.gain.linearRampToValueAtTime(0, tailStart)
+    body.connect(bodyGain).connect(out)
+    body.start(now)
+    body.stop(tailStart)
+
+    // spin-down: the clip's last seconds, crossfaded in over the splice
+    const tail = ctx.createBufferSource()
+    tail.buffer = buffer
+    const tailGain = ctx.createGain()
+    tailGain.gain.setValueAtTime(0, tailStart - SPLICE)
+    tailGain.gain.linearRampToValueAtTime(1, tailStart)
+    tail.connect(tailGain).connect(out)
+    tail.start(tailStart - SPLICE, buffer.duration - ease - SPLICE)
+
+    sources.push(body, tail)
+  })
+
+  return {
+    setVolume: (volume) => out.gain.setTargetAtTime(volume, ctx.currentTime, 0.05),
+    stop: () => {
+      stopped = true
+      const t = ctx.currentTime
+      out.gain.cancelScheduledValues(t)
+      out.gain.setValueAtTime(out.gain.value, t)
+      out.gain.linearRampToValueAtTime(0, t + 0.05)
+      for (const source of sources) source.stop(t + 0.06)
+    },
+  }
 }

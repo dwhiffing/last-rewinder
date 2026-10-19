@@ -1,5 +1,7 @@
+import rainUrl from '../assets/rain.mp3'
+
 // Background music: a low drone plus a worn-out synth pad warbling like an
-// old tape, over soft brown-noise tape rumble. It starts on the first input
+// old tape, over the sound of rain outside. It starts on the first input
 // on the menu and keeps playing into the game.
 const ctx = new AudioContext()
 
@@ -32,21 +34,6 @@ const reverbGain = ctx.createGain()
 reverbGain.gain.value = 0.5
 reverb.connect(reverbGain)
 reverbGain.connect(master)
-
-// Brown noise: white noise run through a leaky integrator, so it's all low
-// rumble with no harsh highs
-function brownNoiseBuffer(seconds: number) {
-  const len = Math.floor(ctx.sampleRate * seconds)
-  const buffer = ctx.createBuffer(1, len, ctx.sampleRate)
-  const data = buffer.getChannelData(0)
-  let last = 0
-  for (let i = 0; i < len; i++) {
-    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
-    data[i] = last * 3.5
-  }
-  return buffer
-}
-const BROWN_NOISE = brownNoiseBuffer(6)
 
 // Tape "wow and flutter": a slow and a fast wobble that can be wired into any
 // oscillator's detune (in cents)
@@ -118,19 +105,57 @@ function every(fn: () => number) {
   }
 }
 
-// Soft brown-noise tape rumble
-function rumble(bus: AudioNode, level: number) {
-  const source = ctx.createBufferSource()
-  source.buffer = BROWN_NOISE
-  source.loop = true
-  const lp = ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 1200
-  const gain = ctx.createGain()
-  gain.gain.value = level
-  source.connect(lp).connect(gain).connect(bus)
-  source.start()
-  return () => source.stop()
+// Rain outside, from a recording. Each pass fades in at its start and out at
+// its end, and the next pass starts during that fade-out, so the loop point
+// is a crossfade rather than a gap or a click.
+const RAIN_FADE = 2.5
+const rainBuffer = fetch(rainUrl)
+  .then((r) => r.arrayBuffer())
+  .then((data) => ctx.decodeAudioData(data))
+
+function rain(bus: AudioNode, level: number) {
+  const out = ctx.createGain()
+  out.gain.value = level
+  out.connect(bus)
+  let alive = true
+  let timer = 0
+  const sources: AudioBufferSourceNode[] = []
+
+  rainBuffer.then((buffer) => {
+    if (!alive) return
+    const fade = Math.min(RAIN_FADE, buffer.duration / 4)
+    const period = buffer.duration - fade
+    let next = ctx.currentTime + 0.05
+    const playPass = (start: number) => {
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(1, start + fade)
+      gain.gain.setValueAtTime(1, start + buffer.duration - fade)
+      gain.gain.linearRampToValueAtTime(0, start + buffer.duration)
+      source.connect(gain).connect(out)
+      source.start(start)
+      sources.push(source)
+      source.onended = () => sources.splice(sources.indexOf(source), 1)
+    }
+    // keep the next pass scheduled a little ahead of time
+    const schedule = () => {
+      if (!alive) return
+      while (next < ctx.currentTime + 1) {
+        playPass(next)
+        next += period
+      }
+      timer = window.setTimeout(schedule, 500)
+    }
+    schedule()
+  })
+
+  return () => {
+    alive = false
+    window.clearTimeout(timer)
+    for (const source of sources) source.stop()
+  }
 }
 
 // Warped synth: a slow, worn-out pad playing an 80s chord loop through a
@@ -142,7 +167,7 @@ const CHORDS = [
   [196, 246.9, 293.7], // G
 ]
 function warpedSynthLayer(bus: GainNode): Layer {
-  const stopRumble = rumble(bus, 0.08)
+  const stopRain = rain(bus, 0.6)
   const wobble = wowFlutter(18, 4)
   const tone = ctx.createBiquadFilter()
   tone.type = 'lowpass'
@@ -175,7 +200,7 @@ function warpedSynthLayer(bus: GainNode): Layer {
   })
   return {
     stop: () => {
-      stopRumble()
+      stopRain()
       stopChords()
       wobble.stop()
     },

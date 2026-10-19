@@ -53,6 +53,23 @@ const TITLES: Record<Genre, string[]> = {
     'Explosion Street',
     'Kickboxer Dad',
     'Total Rewind',
+    'Midnight Convoy',
+    'Rooftop Rundown',
+    'Double Parked',
+    'Last Call for Vengeance',
+    'Vendetta on Aisle 9',
+    'The Reckoning Shift',
+    'Ambush at Checkout',
+    'Ironclad Pursuit',
+    'Ricochet Avenue',
+    'Warzone Weekend',
+    'Blacktop Justice',
+    'Detonation Point',
+    'Standoff at Sundown',
+    'The Getaway Clause',
+    'Full Throttle Alibi',
+    'Payback on Delivery',
+    'One Man, One Van',
   ],
   Comedy: [
     'Ghost Plumbers',
@@ -63,6 +80,23 @@ const TITLES: Record<Genre, string[]> = {
     'Wedding Crushers',
     'Big Trouble',
     'Late Fee',
+    'The Best Man Loses',
+    'Jury Duty Vacation',
+    'Honeymoon in Accounting',
+    'Return to Sender',
+    'The Casserole Incident',
+    'Group Chat Gone Wrong',
+    'Potluck of Doom',
+    'My Landlord the Ninja',
+    'Carpool Catastrophe',
+    'The Timeshare Trap',
+    'Grandpa’s Food Truck',
+    'Open Mic Apocalypse',
+    'The Neighbor’s Wi-Fi',
+    'Parking Lot Pandemonium',
+    'The Book Club Heist',
+    'Fantasy Football Fiasco',
+    'Dog Walker Deluxe',
   ],
   Drama: [
     'The Quiet Harbor',
@@ -73,6 +107,23 @@ const TITLES: Record<Genre, string[]> = {
     'Steel Orchids',
     'Second Chances',
     'The Accountant’s Wife',
+    'Low Tide',
+    'The Weight of Ash',
+    'Sundown Motel',
+    'Paper Moonlight',
+    'The Orchard at Dusk',
+    'Blue Collar Requiem',
+    'Where the River Bends',
+    'A Life in Overtime',
+    'The Cartographer’s Daughter',
+    'Still Water Runs',
+    'The Last Harvest',
+    'Glass Houses',
+    'The Widow’s Almanac',
+    'Threadbare',
+    'The Quarry Road',
+    'Ashes of Elmwood',
+    'The Patient Hour',
   ],
   Horror: [
     'Night of the Late Fees',
@@ -83,6 +134,23 @@ const TITLES: Record<Genre, string[]> = {
     'Do Not Open',
     'Evil Dad',
     'Static',
+    'The Crawlspace',
+    'Dial M for Midnight',
+    'Rewound',
+    'The Sitter Upstairs',
+    'The Landlord Downstairs',
+    'Flicker',
+    'The Taping',
+    'Hour of the Wolf Moon',
+    'The Guest Room',
+    'Bloodmoon Drive-In',
+    'The Thing in 4B',
+    'Widow’s Peak Motel',
+    'The Projectionist',
+    'Hollow Creek',
+    'The Tenant’s Secret',
+    'Last Showing',
+    'Behind the Mirror',
   ],
   'Sci-Fi': [
     'Robo Clerk',
@@ -93,6 +161,23 @@ const TITLES: Record<Genre, string[]> = {
     'The Last Signal',
     'Alien Returns',
     'Cyber Cop 2099',
+    'Orbit Station Zero',
+    'The Clone Shift',
+    'Satellite Heart',
+    'Android Overtime',
+    'The Nebula Job',
+    'Wormhole Layover',
+    'Starlight Repo',
+    'The Synthetic Heart',
+    'Colony 9',
+    'Zero-G Getaway',
+    'The Archive Ship',
+    'Galactic Standby',
+    'The Terraform Clause',
+    'Nova Drift',
+    'The Android’s Dilemma',
+    'Lunar Static',
+    'Red Dust Protocol',
   ],
   Family: [
     'Puppy Detective',
@@ -103,6 +188,23 @@ const TITLES: Record<Genre, string[]> = {
     'Duck Ranch',
     'The Little Robot',
     'Summer Camp Panic',
+    'The Backyard Expedition',
+    'Snowball Fort',
+    'My Pet Dinosaur',
+    'The Treehouse Club',
+    'The Cookie Jar Caper',
+    'Recess Rangers',
+    'The Magic Lunchbox',
+    'Barnyard Boogie',
+    'The Invisible Goldfish',
+    'Camp Wobegon',
+    'The Attic Adventure',
+    'Sled Dog Summer',
+    'The Talking Bicycle',
+    'Pajama Party Patrol',
+    'The Secret Garden Gnome',
+    'Bubblegum Island',
+    'The Lighthouse Kids',
   ],
 }
 
@@ -215,10 +317,23 @@ function makeMinutes(rand: Rand, genre: Genre) {
   return base + Math.floor(rand() * 60)
 }
 
+// Once a genre's handwritten titles are used up, the shelf just starts back
+// at the top of the list with "II" tacked on (then "III" if it ever came to
+// that) rather than needing new titles written for it
+const ROMAN_NUMERALS = ['', 'II', 'III', 'IV', 'V']
+const CATALOGUE_LAPS = 2
+function withSequelLaps(titles: string[]) {
+  const out: string[] = []
+  for (let lap = 0; lap < CATALOGUE_LAPS; lap++) {
+    for (const title of titles) out.push(lap === 0 ? title : `${title} ${ROMAN_NUMERALS[lap]}`)
+  }
+  return out
+}
+
 const rand = mulberry32(1985)
 
 export const TAPES: Tape[] = GENRES.flatMap((genre) =>
-  TITLES[genre].map((title, i) => {
+  withSequelLaps(TITLES[genre]).map((title, i) => {
     const decade = weighted(rand, [['70s', 2], ['80s', 5], ['90s', 3]] as [Decade, number][])
     const year = DECADE_START[decade] + Math.floor(rand() * 10)
     const actors = pickActors(rand, genre)

@@ -2,6 +2,7 @@ import { PerspectiveCamera } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useWorld } from 'koota/react'
 import { useEffect, useRef } from 'react'
+import useGameStore from '../../stores/gameStore'
 import { MathUtils, type Object3D, type PerspectiveCamera as Cam } from 'three'
 import {
   CAMERA_PITCH,
@@ -60,10 +61,13 @@ export function Controller() {
     const halfH = Math.atan(Math.tan(halfV) * cam.aspect)
     const cropV = halfV - Math.atan(Math.tan(halfV) / ZOOM)
     const cropH = halfH - Math.atan(Math.tan(halfH) / ZOOM)
-    const px = MathUtils.clamp(pointerNdc.x, -1, 1)
-    const py = MathUtils.clamp(pointerNdc.y, -1, 1)
-    l.yaw += (-px * cropH * PIVOT - l.yaw) * k
-    l.pitch += (py * cropV * PIVOT - l.pitch) * k
+    // the view holds still while the order computer is up
+    if (!useGameStore.getState().computerOpen) {
+      const px = MathUtils.clamp(pointerNdc.x, -1, 1)
+      const py = MathUtils.clamp(pointerNdc.y, -1, 1)
+      l.yaw += (-px * cropH * PIVOT - l.yaw) * k
+      l.pitch += (py * cropV * PIVOT - l.pitch) * k
+    }
     const fov = MathUtils.radToDeg(2 * Math.atan(Math.tan(halfV) / ZOOM))
     if (Math.abs(cam.fov - fov) > 1e-4) {
       cam.fov = fov

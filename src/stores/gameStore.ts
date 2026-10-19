@@ -3,8 +3,20 @@ import { ALL_SLOT_IDS, coveringSlot, neighbourSlot, SLOTS_PER_TIER, slotId } fro
 import { daySchedule, generateOrder, matches, type Order, type ScheduledKind } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
 import { isSnack, isWide, itemName, setNamesHidden, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
-import { TAPES, tapeById } from '../data/tapes'
-import { playCash, playError, playInteract, playOrderIn } from '../entities/sounds'
+import { GENRES, TAPES, tapeById } from '../data/tapes'
+import {
+  playCash,
+  playClick,
+  playDrop,
+  playError,
+  playFail,
+  playInteract,
+  playOrderIn,
+  playPickup,
+  playPowerOff,
+  playPowerOn,
+  playTap,
+} from '../entities/sounds'
 
 export type SoundMode = 'all' | 'muteMusic' | 'muteAll'
 
@@ -14,7 +26,7 @@ const FIRST_ORDER_AT = 3
 const ORDER_GAP: [number, number] = [12, 20]
 
 // Days and stock
-const STARTING_TAPES = 25
+const STARTING_TAPES = 50
 // Rented tapes come back unrewound in the return box 1 to 3 days later
 const RENTAL_DAYS: [number, number] = [1, 3]
 export const REWIND_SECONDS = 8
@@ -39,6 +51,8 @@ export interface HudMessage {
 export interface Hovered {
   kind: string
   label: string
+  // the shelf slot it sits in, for tapes and snacks
+  slotId?: string
 }
 
 export interface Rewinder {
@@ -143,10 +157,17 @@ function loadSoundMode(): SoundMode {
 let orderRand = mulberry32(Date.now())
 
 // The store opens with a few tapes scattered at random; the rest of the
-// catalogue arrives a few at a time each morning
+// catalogue arrives a few at a time each morning. The catalogue itself isn't
+// shuffled - each genre's titles are introduced in the order they're listed,
+// cycled round-robin across genres so the opening stock (and each day's new
+// arrivals) still gets a mix instead of one genre at a time.
 function initialStock() {
   const rand = mulberry32(1987)
-  const catalogue = shuffle(rand, TAPES.map((t) => t.id))
+  const byGenre = GENRES.map((genre) => TAPES.filter((t) => t.genre === genre).map((t) => t.id))
+  const catalogue: string[] = []
+  for (let i = 0; catalogue.length < TAPES.length; i++) {
+    for (const list of byGenre) if (list[i]) catalogue.push(list[i])
+  }
   // The middle units (F|H and G|I) start empty so there's room to organize
   const startShelves = ['A', 'B', 'C', 'D', 'E']
   const slotIds = shuffle(
@@ -288,6 +309,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const tapeId = slots[slotId]
     if (!tapeId) return
     if (carried.length >= MAX_CARRIED) {
+      playError()
       showMessage(`Your hands are full (${MAX_CARRIED} tapes)`)
       return
     }
@@ -300,7 +322,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   putDown: (clicked) => {
     const { slots, carried, needsRewind, showMessage } = get()
     const tapeId = carried[carried.length - 1]
-    if (!tapeId) return
+    if (!tapeId) {
+      playTap()
+      return
+    }
     const free = (id: string | null): id is string => !!id && !slots[id] && !coveringSlot(slots, id)
     let slotId = clicked
     if (!free(slotId)) return
@@ -331,14 +356,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { returnBox, carried, showMessage } = get()
     const tapeId = returnBox[returnBox.length - 1]
     if (!tapeId) {
+      // with nothing to take, empty hands just tap on the table it sits on
+      if (carried.length) playError()
+      else playTap()
       showMessage('The return box is empty')
       return
     }
     if (carried.length >= MAX_CARRIED) {
+      playError()
       showMessage(`Your hands are full (${MAX_CARRIED} tapes)`)
       return
     }
-    playInteract()
+    playPickup(tapeId)
     set({
       returnBox: returnBox.slice(0, -1),
       carried: [...carried, tapeId],
@@ -350,13 +379,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (rewinder) {
       const left = rewinder.doneAt - time
       if (left > 0) {
+        playError()
         showMessage(`Still rewinding (${Math.ceil(left)}s)`)
         return
       }
       // Holding a tape that needs rewinding swaps it with the finished one
       const top = carried[carried.length - 1]
       if (top && needsRewind[top]) {
-        playInteract()
+        playDrop(top)
         const { [top]: _, ...rest } = needsRewind
         set({
           carried: [...carried.slice(0, -1), rewinder.tapeId],
@@ -367,25 +397,28 @@ export const useGameStore = create<GameState>((set, get) => ({
         return
       }
       if (carried.length >= MAX_CARRIED) {
+        playError()
         showMessage(`Your hands are full (${MAX_CARRIED} tapes)`)
         return
       }
-      playInteract()
+      playPickup(rewinder.tapeId)
       set({ rewinder: null, carried: [...carried, rewinder.tapeId], coverFlipped: false })
       return
     }
     const top = carried[carried.length - 1]
     if (!top) {
+      playError()
       showMessage('Bring a tape from the return box to rewind')
       return
     }
     if (!needsRewind[top]) {
+      playError()
       showMessage(
         isSnack(top) ? "Snacks don't need rewinding" : `${tapeById(top).title} is already rewound`,
       )
       return
     }
-    playInteract()
+    playDrop(top)
     const { [top]: _, ...rest } = needsRewind
     set({
       carried: carried.slice(0, -1),
@@ -430,7 +463,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // From day 2 the power cuts out once at a random point in the day
     if (s.outageAt !== null && time >= s.outageAt) {
-      playError()
       set({ powerOut: true, outageAt: null })
       s.showMessage('The power went out! Restore it from the computer')
     }
@@ -441,6 +473,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const patch: Partial<GameState> = { time }
 
     if (expired.length) {
+      playFail()
       const back = attachedItems(expired)
       patch.message = {
         text: back.length
@@ -516,7 +549,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         s.showMessage(order.snack ? `They wanted ${order.snack}, not ${type}` : "That order didn't ask for a snack")
         return
       }
-      playInteract()
+      playDrop(top)
       set({ carried, coverFlipped: false, orders: update({ ...order, snackFilled: top }) })
       return
     }
@@ -533,7 +566,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return
     }
     const items = order.items.map((item, i) => (i === itemIndex ? { ...item, filled: top } : item))
-    playInteract()
+    playDrop(top)
     set({ carried, coverFlipped: false, orders: update({ ...order, items }) })
   },
   submitOrder: (orderId) => {
@@ -679,16 +712,24 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
     })
   },
-  setComputerOpen: (computerOpen) => set({ computerOpen }),
-  restorePower: () => {
-    playInteract()
-    set({ powerOut: false })
+  setComputerOpen: (computerOpen) => {
+    if (!computerOpen && get().computerOpen) playClick()
+    set({ computerOpen })
   },
+  restorePower: () => set({ powerOut: false }),
   flipCover: () => set((s) => ({ coverFlipped: !s.coverFlipped })),
 }))
 
 // keep tape titles hidden for exactly as long as the lights are out
 useGameStore.subscribe((s) => setNamesHidden(s.powerOut))
+
+// Every way the power changes (the outage, restoring it, a new day, the debug
+// button) gets its sound
+useGameStore.subscribe((s, prev) => {
+  if (s.powerOut === prev.powerOut) return
+  if (s.powerOut) playPowerOff()
+  else playPowerOn()
+})
 
 export default useGameStore
 

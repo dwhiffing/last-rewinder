@@ -1,5 +1,6 @@
-import { memo } from 'react'
-import { CanvasTexture, SRGBColorSpace } from 'three'
+import { useFrame } from '@react-three/fiber'
+import { memo, type ReactNode, useEffect, useRef } from 'react'
+import { CanvasTexture, type Group, SRGBColorSpace, Vector3 } from 'three'
 import { isSnack, isWide, snackOf } from '../../data/snacks'
 import { GENRE_COLORS, tapeById } from '../../data/tapes'
 import {
@@ -17,7 +18,7 @@ import { WOOD } from './textures'
 import Label from './label'
 import { coveringSlot } from '../../data/storeLayout'
 import SnackBox, { snackBoxSize } from './snackBox'
-import SodaCan, { CAN_HEIGHT } from './sodaCan'
+import SodaCan, { CAN_HEIGHT, CAN_RADIUS } from './sodaCan'
 
 const PANEL = 0.03
 // A header panel across the top of the front carries the shelf's sign
@@ -28,8 +29,69 @@ const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
 const TAPE_SIZE: [number, number, number] = [0.0765, tierSpacing - PANEL, 0.13]
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
 
-const HIT_FRONT = SHELF_DEPTH / 2 + 0.005
+// The click box reaches well past the shelf front (hit slop), so a tape is
+// easy to point at and stays hovered while it slides out
+const HIT_SLOP = 0.08
+const HIT_FRONT = SHELF_DEPTH / 2 + 0.005 + HIT_SLOP
 const HIT_BACK = SHELF_DEPTH / 2 - TAPE_SIZE[2] - 0.01
+
+// A hovered tape or snack slides forward (local +z) a little past its own
+// depth, so it comes all the way out of the shelf, growing around its own
+// centre as it goes
+const HOVER_POP_CLEARANCE = 0.01
+const HOVER_POP_EXTRA = 1.3225
+const HOVER_POP_SECONDS = 0.15
+const HOVER_SCALE = 1.26
+const popDistance = (depth: number) => (depth + HOVER_POP_CLEARANCE) * HOVER_POP_EXTRA
+const _toCamera = new Vector3()
+function HoverPop({
+  hovered,
+  depth,
+  center,
+  children,
+}: {
+  hovered: boolean
+  depth: number
+  center: [number, number, number]
+  children: ReactNode
+}) {
+  const distance = popDistance(depth)
+  const ref = useRef<Group>(null)
+  // The moving item is never hit-tested: hover goes by where it sits at rest
+  // (see the proxy in Slot), so the animation can't change what's hovered
+  // and set it flickering between neighbours
+  useEffect(() => {
+    ref.current?.traverse((o) => (o.raycast = () => {}))
+  }, [])
+  useFrame(({ camera }, delta) => {
+    const group = ref.current
+    if (!group?.parent) return
+    // 0 at rest, 1 fully out; moves linearly so it takes HOVER_POP_SECONDS
+    const now = group.position.z / distance
+    const step = delta / HOVER_POP_SECONDS
+    const t = hovered ? Math.min(1, now + step) : Math.max(0, now - step)
+    group.position.z = t * distance
+    group.scale.setScalar(1 + (HOVER_SCALE - 1) * t)
+    // turn the front (local +z) toward the camera so the spine is easy to read
+    if (t === 0) {
+      group.rotation.set(0, 0, 0)
+      return
+    }
+    camera.getWorldPosition(_toCamera)
+    group.parent.worldToLocal(_toCamera).sub(group.position)
+    const yaw = Math.atan2(_toCamera.x, _toCamera.z)
+    const pitch = -Math.atan2(_toCamera.y, Math.hypot(_toCamera.x, _toCamera.z))
+    group.rotation.set(pitch * t, yaw * t, 0, 'YXZ')
+  })
+  const [cx, cy, cz] = center
+  return (
+    <group position={center}>
+      <group ref={ref}>
+        <group position={[-cx, -cy, -cz]}>{children}</group>
+      </group>
+    </group>
+  )
+}
 
 const slotPosition = (tier: number, slot: number): [number, number, number] => [
   -SHELF_WIDTH / 2 + PANEL + slotSpacing * (slot + 0.5),
@@ -118,6 +180,7 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const tapeId = useGameStore((s) => s.slots[id])
   // the right half of a wide snack box: the box itself takes the clicks
   const covered = useGameStore((s) => !!coveringSlot(s.slots, id))
+  const hovered = useGameStore((s) => s.hovered?.kind === 'tape' && s.hovered.slotId === id)
   if (covered) return null
   const position = slotPosition(tier, slot)
 
@@ -125,11 +188,11 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   // slots that ignore the pointer (a wide snack's box covers two cells)
   const wide = isWide(tapeId)
   const [x, y, z] = position
-  const hit = (
+  const hitBox = (front: number) => (
     // also covers the board below, so there's no gap between rows either, and
     // reaches just past the boards' front edges so they never catch the pointer
-    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y - PANEL / 2, (HIT_FRONT + HIT_BACK) / 2]}>
-      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), tierSpacing, HIT_FRONT - HIT_BACK]} />
+    <mesh position={[x + (wide ? slotSpacing / 2 : 0), y - PANEL / 2, (front + HIT_BACK) / 2]}>
+      <boxGeometry args={[slotSpacing * (wide ? 2 : 1), tierSpacing, front - HIT_BACK]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   )
@@ -137,7 +200,7 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   if (!tapeId) {
     return (
       <group key="empty" name="slot" userData={{ label: 'Empty slot', slotId: id }}>
-        {hit}
+        {hitBox(HIT_FRONT)}
       </group>
     )
   }
@@ -146,23 +209,26 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const color = snack ? snack.color : GENRE_COLORS[tapeById(tapeId).genre]
   const label = snack ? snack.type : tapeById(tapeId).title
   let item
+  let depth = TAPE_SIZE[2]
+  let center = position
+  let restSize: [number, number, number] = TAPE_SIZE
   if (snack?.type === 'Soda') {
+    depth = CAN_RADIUS * 2
+    restSize = [CAN_RADIUS * 2, CAN_HEIGHT, CAN_RADIUS * 2]
+    center = [x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]
     // a can standing on the shelf board
-    item = <SodaCan position={[x, y - TAPE_SIZE[1] / 2 + CAN_HEIGHT / 2, z]} />
+    item = <SodaCan position={center} />
   } else if (snack) {
     // a box standing on the shelf board, front flush with the tape spines
     const size = snackBoxSize(snack.type, slotSpacing * 2 - 0.01, TAPE_SIZE[1] - 0.01)
     const [, h, d] = size
-    item = (
-      <SnackBox
-        type={snack.type}
-        size={size}
-        position={[x + slotSpacing / 2, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]}
-      />
-    )
+    depth = d
+    restSize = size
+    center = [x + slotSpacing / 2, y - TAPE_SIZE[1] / 2 + h / 2, z + TAPE_SIZE[2] / 2 - d / 2]
+    item = <SnackBox type={snack.type} size={size} position={center} />
   } else {
     item = (
-      <mesh castShadow position={position}>
+      <mesh position={position}>
         <boxGeometry args={TAPE_SIZE} />
         {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z */}
         {[0, 1, 2, 3, 4, 5].map((face) =>
@@ -178,8 +244,16 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   return (
     // keyed by tape so a swap mounts a fresh group and the hover picks it up
     <group key={tapeId} name="tape" userData={{ label, slotId: id }}>
-      {hit}
-      {item}
+      {/* while out, the click box stretches to cover it so no part of it loses the hover */}
+      {hitBox(hovered ? Math.max(HIT_FRONT, SHELF_DEPTH / 2 + popDistance(depth) + (depth * (HOVER_SCALE - 1)) / 2) : HIT_FRONT)}
+      {/* the item's shape at rest, for hover and clicks */}
+      <mesh position={center} userData={{ hoverProxy: true }}>
+        <boxGeometry args={restSize} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      <HoverPop hovered={hovered} depth={depth} center={center}>
+        {item}
+      </HoverPop>
     </group>
   )
 })

@@ -50,7 +50,7 @@ export function SnackBox({
 }) {
   const box = BOXES[type]
   return (
-    <mesh name={name} userData={userData} position={position} castShadow receiveShadow>
+    <mesh name={name} userData={userData} position={position} receiveShadow>
       <boxGeometry args={size} />
       {/* box faces are +x, -x, +y, -y, +z (front), -z */}
       {[0, 1, 2, 3, 4, 5].map((face) =>

@@ -18,6 +18,7 @@ export function VhsOverlay({ className = '' }: { className?: string }) {
   return (
     <div className={`vhs ${className}`} aria-hidden>
       <div className="vhs-noise" />
+      <div className="vhs-chroma" />
       <div className="vhs-scanlines" />
       <div className="vhs-tracking" />
       <TapeArtefacts />
