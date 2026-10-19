@@ -50,10 +50,22 @@ export function Label({
     g.fillRect(0, 0, canvas.width, canvas.height)
     g.fillStyle = color
     g.font = `bold ${Math.round(canvas.height * (marquee ? 0.72 : 0.6))}px ${fontSpec}`
-    g.textAlign = align
-    g.textBaseline = 'middle'
-    const x = align === 'left' ? canvas.width * 0.04 : canvas.width / 2
-    g.fillText(text, x, canvas.height / 2, canvas.width * 0.92)
+    // centre on the drawn glyphs rather than the font's em box, which sits
+    // off-centre for display faces like the marquee one
+    g.textAlign = 'left'
+    g.textBaseline = 'alphabetic'
+    const m = g.measureText(text)
+    const maxW = canvas.width * 0.92
+    const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight
+    const sx = Math.min(1, maxW / inkW)
+    const left = align === 'left' ? canvas.width * 0.04 : (canvas.width - inkW * sx) / 2
+    const x = left + m.actualBoundingBoxLeft * sx
+    const y = (canvas.height + m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
+    g.save()
+    g.translate(x, y)
+    g.scale(sx, 1)
+    g.fillText(text, 0, 0)
+    g.restore()
     const tex = new CanvasTexture(canvas)
     tex.colorSpace = SRGBColorSpace
     if (!glow) {

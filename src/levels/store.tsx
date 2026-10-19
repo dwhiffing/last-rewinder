@@ -350,7 +350,8 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         rotation={[0, -Math.PI / 2, 0]}
         width={0.9}
         height={0.2}
-        background="#2e7d32"
+        background={TRIM_COLOR}
+        color="#ffd400"
       />
 
       {SHELVES.map(({ id, position, rotationY }) => (
