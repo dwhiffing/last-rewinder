@@ -3,9 +3,9 @@ import ceilingColor from '../../assets/ceiling-color.jpg'
 import ceilingEmission from '../../assets/ceiling-emission.jpg'
 import ceilingNormal from '../../assets/ceiling-normal.jpg'
 import ceilingRoughness from '../../assets/ceiling-roughness.jpg'
-import plasterColor from '../../assets/plaster-color.jpg'
-import plasterNormal from '../../assets/plaster-normal.jpg'
-import plasterRoughness from '../../assets/plaster-roughness.jpg'
+import wallpaperColor from '../../assets/wallpaper-color.jpg'
+import wallpaperNormal from '../../assets/wallpaper-normal.jpg'
+import wallpaperRoughness from '../../assets/wallpaper-roughness.jpg'
 import woodColor from '../../assets/wood-color.jpg'
 import woodNormal from '../../assets/wood-normal.jpg'
 import woodRoughness from '../../assets/wood-roughness.jpg'
@@ -28,10 +28,10 @@ function load(url: string, color = false) {
   return tex
 }
 
-export const PLASTER: TextureSet = {
-  map: load(plasterColor, true),
-  normalMap: load(plasterNormal),
-  roughnessMap: load(plasterRoughness),
+export const WALLPAPER: TextureSet = {
+  map: load(wallpaperColor, true),
+  normalMap: load(wallpaperNormal),
+  roughnessMap: load(wallpaperRoughness),
   tile: 2,
 }
 
