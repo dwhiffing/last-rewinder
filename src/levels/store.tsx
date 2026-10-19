@@ -377,7 +377,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       ))}
 
       {/* in a blackout the room is near black; only glowing screens light it */}
-      <ambientLight intensity={powerOut ? 0.012 : 0} color="#6f86c4" />
+      <ambientLight intensity={powerOut ? 0.2 : 0} color="#6f86c4" />
 
       {/* one light under each working ceiling light panel */}
       {LIGHT_FRACTIONS.flatMap((fx) =>
