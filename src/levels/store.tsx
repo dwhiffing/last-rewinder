@@ -198,7 +198,7 @@ function NightSky() {
 function Ceiling() {
   const maps = useMemo(() => {
     const { map, normalMap, roughnessMap, emissiveMap } = CEILING
-    return [map!, normalMap, roughnessMap, emissiveMap!].map((t) => {
+    return [map!, normalMap, roughnessMap!, emissiveMap!].map((t) => {
       const tex = t.clone()
       tex.repeat.set(CEILING_REPEAT, CEILING_REPEAT)
       // shift so the panels (at 0.42/0.92 across the image) sit at 0.25/0.75

@@ -8,7 +8,6 @@ import wallpaperNormal from '../../assets/wallpaper-normal.jpg'
 import wallpaperRoughness from '../../assets/wallpaper-roughness.jpg'
 import scuffsColor from '../../assets/scuffs-color.jpg'
 import scuffsNormal from '../../assets/scuffs-normal.jpg'
-import scuffsRoughness from '../../assets/scuffs-roughness.jpg'
 import woodColor from '../../assets/wood-color.jpg'
 import woodNormal from '../../assets/wood-normal.jpg'
 import woodRoughness from '../../assets/wood-roughness.jpg'
@@ -16,7 +15,7 @@ import woodRoughness from '../../assets/wood-roughness.jpg'
 export interface TextureSet {
   map?: Texture
   normalMap: Texture
-  roughnessMap: Texture
+  roughnessMap?: Texture
   emissiveMap?: Texture
   // how strongly the normal map bumps the surface (default 1)
   normalScale?: number
@@ -47,13 +46,12 @@ export const WOOD: TextureSet = {
   tile: 1,
 }
 
-// Scuffs and grime for painted surfaces like the tables: a mostly-white map
-// that darkens the paint where it's worn, plus exaggerated bumps
+// Splattered grime for painted surfaces like the tables: a mostly-white map
+// that darkens the paint where it's stained, plus matching bumps
 export const SCUFFS: TextureSet = {
   map: load(scuffsColor, true),
   normalMap: load(scuffsNormal),
   normalScale: 1,
-  roughnessMap: load(scuffsRoughness),
   tile: 1.5,
 }
 
