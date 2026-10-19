@@ -712,7 +712,7 @@ body {
   text-transform: uppercase;
   pointer-events: none;
   /* sits lower than the centred column without pushing the logo up */
-  transform: translateY(20vh);
+  transform: translateY(12vh);
   animation: menuBlink 1.2s steps(2) infinite;
 }
 @keyframes menuBlink {
