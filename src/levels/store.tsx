@@ -214,7 +214,9 @@ function Ceiling() {
         normalMap={maps[1]}
         roughnessMap={maps[2]}
         emissiveMap={maps[3]}
-        emissive="#ffffff"
+        // with the power out the panels go fully black, not just unlit
+        color={powerOut ? '#000000' : '#ffffff'}
+        emissive={powerOut ? '#000000' : '#ffffff'}
         emissiveIntensity={powerOut ? 0 : 1.2}
       />
     </mesh>
