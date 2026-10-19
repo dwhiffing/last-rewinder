@@ -96,7 +96,7 @@ function drawSpine(
   const title = (snack ? snack.type : tape!.title).toUpperCase()
   const lines = title.length > 12 ? splitInTwo(title) : [title]
   // marker capitals sit well inside their em box, so lines can stack tightly
-  const size = W * (lines.length > 1 ? 0.49 : 0.6)
+  const size = W * (lines.length > 1 ? 0.44 : 0.54)
   g.font = `${size}px "Permanent Marker", sans-serif`
   lines.forEach((line, i) => {
     const y = (i - (lines.length - 1) / 2) * size * 0.82 + size * 0.06
