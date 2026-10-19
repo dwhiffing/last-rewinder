@@ -14,9 +14,9 @@ import {
 import { DebugLevel } from '../levels/debug'
 import { KootaSystems } from '../providers'
 import { type Order } from '../data/orders'
-import { SNACK_ART } from '../entities/store/snackBox'
-import { colaUrl } from '../entities/store/sodaCan'
-import { isSnack, itemColor, itemName, SNACK_TYPES, snackOf, SNACKS } from '../data/snacks'
+import SnackBox, { snackBoxSize } from '../entities/store/snackBox'
+import SodaCan from '../entities/store/sodaCan'
+import { isSnack, itemColor, itemName, SNACK_TYPES, type SnackType, snackOf, SNACKS } from '../data/snacks'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../data/tapes'
 import useGameStore, {
   type GameState,
@@ -387,6 +387,19 @@ function SnackShop() {
   )
 }
 
+// The snack in your hands, front on
+function HeldSnack({ type }: { type: SnackType }) {
+  return (
+    <group rotation={[0.15, 0, 0]}>
+      {type === 'Soda' ? (
+        <SodaCan position={[0, 0, 0]} />
+      ) : (
+        <SnackBox type={type} size={snackBoxSize(type, 0.25, 0.3)} position={[0, 0, 0]} />
+      )}
+    </group>
+  )
+}
+
 // Box art for the top tape in your hands. Click (or F) to flip it over.
 function TapeCard() {
   const top = useGameStore((s) => s.carried[s.carried.length - 1])
@@ -398,11 +411,11 @@ function TapeCard() {
     const snack = snackOf(top)
     return (
       <div className="tape-card snack-card">
-        {snack.type === 'Soda' ? (
-          <div className="snack-art soda-art" style={{ backgroundImage: `url(${colaUrl})` }} />
-        ) : (
-          <img className="snack-art" src={SNACK_ART[snack.type]} alt={snack.type} />
-        )}
+        <Canvas className="snack-art" camera={{ position: [0, 0.02, 0.42], fov: 40 }} dpr={[1, 2]}>
+          <ambientLight intensity={1.2} />
+          <directionalLight position={[0.6, 0.8, 1]} intensity={2.2} />
+          <HeldSnack type={snack.type} />
+        </Canvas>
         <div className="tape-card-hint">
           {snack.type}
           {' \u00b7 sells for $'}
