@@ -700,3 +700,12 @@ body {
 .vhs.vhs-menu {
   z-index: 1001;
 }
+
+/* mobile browsers flash a highlight over whatever is tapped; turn it off */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body {
+  -webkit-touch-callout: none;
+}
