@@ -1,15 +1,11 @@
 import { useWorld } from 'koota/react'
 import { useEffect, useMemo, useRef } from 'react'
 import {
-  EquirectangularReflectionMapping,
   type Group,
   type Mesh as ThreeMesh,
   type PointLight,
-  SRGBColorSpace,
-  TextureLoader,
 } from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
-import nightSkyUrl from '../assets/night-sky.jpg'
 import {
   BACK_Z,
   COUNTER_POSITION,
@@ -28,13 +24,14 @@ import {
 } from '../data/storeLayout'
 import Block from '../entities/store/block'
 import Carpet from '../entities/store/carpet'
-import { CEILING, glassTexture, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
+import { CEILING, glassTexture, NIGHT_SKY, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
 import Poster from '../entities/store/poster'
 import Door from '../entities/store/door'
 import RainGlass from '../entities/store/rainGlass'
+import Rainfall from '../entities/store/rainfall'
 import { Mesh } from '../shared/traits'
 import { itemColor } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
@@ -182,14 +179,10 @@ function TableTop({ width, depth, position: [x, y, z] }: { width: number; depth:
 function NightSky() {
   const scene = useThree((s) => s.scene)
   useEffect(() => {
-    const tex = new TextureLoader().load(nightSkyUrl)
-    tex.mapping = EquirectangularReflectionMapping
-    tex.colorSpace = SRGBColorSpace
-    scene.background = tex
+    scene.background = NIGHT_SKY
     scene.backgroundRotation.set(0, -Math.PI / 2, 0)
     return () => {
       scene.background = null
-      tex.dispose()
     }
   }, [scene])
   return null
@@ -302,6 +295,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
         </group>
       ))}
       <Door position={[ENTRANCE_X, 0, FRONT_Z]} width={DOOR_W} height={DOOR_H} />
+      <Rainfall width={STORE_WIDTH + 2} depth={5} position={[0, 0, FRONT_Z - WALL / 2 - 0.3]} />
 
       {/* checkout counter, customers stand between it and the front wall */}
       <group name="counter" userData={{ label: 'Counter' }}>

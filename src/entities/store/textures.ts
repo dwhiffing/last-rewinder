@@ -1,4 +1,11 @@
-import { BoxGeometry, RepeatWrapping, SRGBColorSpace, TextureLoader, type Texture } from 'three'
+import {
+  BoxGeometry,
+  EquirectangularReflectionMapping,
+  RepeatWrapping,
+  SRGBColorSpace,
+  TextureLoader,
+  type Texture,
+} from 'three'
 import ceilingColor from '../../assets/ceiling-color.jpg'
 import ceilingEmission from '../../assets/ceiling-emission.jpg'
 import ceilingNormal from '../../assets/ceiling-normal.jpg'
@@ -6,6 +13,7 @@ import ceilingRoughness from '../../assets/ceiling-roughness.jpg'
 import wallpaperColor from '../../assets/wallpaper-color.jpg'
 import wallpaperNormal from '../../assets/wallpaper-normal.jpg'
 import wallpaperRoughness from '../../assets/wallpaper-roughness.jpg'
+import nightSkyUrl from '../../assets/night-sky.jpg'
 import glassSmudge from '../../assets/glass-smudge.webp'
 import scuffsColor from '../../assets/scuffs-color.jpg'
 import scuffsNormal from '../../assets/scuffs-normal.jpg'
@@ -107,3 +115,9 @@ export function glassTexture(width: number, height: number) {
   }
   return tex
 }
+
+// Night panorama outside the windows: the scene background, and what the
+// raindrops on the glass refract
+export const NIGHT_SKY = loader.load(nightSkyUrl)
+NIGHT_SKY.mapping = EquirectangularReflectionMapping
+NIGHT_SKY.colorSpace = SRGBColorSpace
