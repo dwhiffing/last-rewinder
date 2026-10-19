@@ -10,6 +10,7 @@ export function Label({
   height = 0.1,
   color = '#fff',
   background = '#1d3fbf',
+  glow = false,
 }: {
   text: string
   position?: [number, number, number]
@@ -18,6 +19,8 @@ export function Label({
   height?: number
   color?: string
   background?: string
+  // screens give off their own light; signs are lit by the room
+  glow?: boolean
 }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
@@ -39,9 +42,13 @@ export function Label({
   useEffect(() => () => texture.dispose(), [texture])
 
   return (
-    <mesh position={position} rotation={rotation}>
+    <mesh position={position} rotation={rotation} receiveShadow>
       <planeGeometry args={[width, height]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
+      {glow ? (
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      ) : (
+        <meshStandardMaterial map={texture} roughness={0.6} />
+      )}
     </mesh>
   )
 }

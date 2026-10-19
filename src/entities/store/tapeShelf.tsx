@@ -160,9 +160,10 @@ export function TapeShelf({
 
       <Label
         text={`SHELF ${id}`}
-        position={[0, SHELF_HEIGHT - HEADER / 2, SHELF_DEPTH / 2 + 0.005]}
-        width={SHELF_WIDTH * 0.5}
-        height={HEADER - 0.04}
+        // fills the header between the side panels, above the top board
+        position={[0, SHELF_HEIGHT - HEADER / 2, SHELF_DEPTH / 2 - 0.002]}
+        width={SHELF_WIDTH - PANEL * 2}
+        height={HEADER}
         background="#1d3fbf"
         color="#ffd400"
       />

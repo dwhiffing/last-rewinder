@@ -28,7 +28,7 @@ import {
 } from '../data/storeLayout'
 import Block from '../entities/store/block'
 import Carpet from '../entities/store/carpet'
-import { CEILING, WALLPAPER, WOOD } from '../entities/store/textures'
+import { CEILING, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
 import TapeShelf from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
@@ -90,6 +90,34 @@ const LIGHT_INTENSITY = 1.25
 // Panels (by grid fraction) whose tubes are dead, and one on its way out
 const DEAD_LIGHTS = ['0.625,0.375', '0.125,0.875', '0.875,0.125', '0.375,0.125']
 const FLICKER_LIGHTS = ['0.375,0.625']
+// Point-light shadows are costly, so only a few working lights cast them:
+// over the counter, the return box and the middle of the shelves
+const SHADOW_LIGHTS = ['0.125,0.125', '0.875,0.375', '0.375,0.375', '0.625,0.625']
+
+// Shadows only change when something moves, so the shadow maps are redrawn
+// only then (and a few times while the scene and textures settle on load)
+function ShadowRefresh() {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    const settle = [250, 1000, 3000].map((ms) => window.setTimeout(() => (gl.shadowMap.needsUpdate = true), ms))
+    const unsub = useGameStore.subscribe((state, prev) => {
+      if (
+        state.slots !== prev.slots ||
+        state.returnBox !== prev.returnBox ||
+        state.rewinder !== prev.rewinder
+      )
+        gl.shadowMap.needsUpdate = true
+    })
+    return () => {
+      settle.forEach(window.clearTimeout)
+      unsub()
+      gl.shadowMap.autoUpdate = true
+    }
+  }, [gl])
+  return null
+}
 // A light panel's size on the ceiling (about 0.154 of one texture copy)
 const PANEL_W = (STORE_WIDTH / CEILING_REPEAT) * 0.154
 const PANEL_D = (depth / CEILING_REPEAT) * 0.154
@@ -134,6 +162,20 @@ function FlickerPanel({ position }: { position: [number, number, number] }) {
   )
 }
 
+// Yellow top slab overhanging a table by 5cm on each side; `position` is
+// the middle of the table's top surface
+const TOP_H = 0.05
+function TableTop({ width, depth, position: [x, y, z] }: { width: number; depth: number; position: [number, number, number] }) {
+  return (
+    <Block
+      size={[width + 0.1, TOP_H, depth + 0.1]}
+      position={[x, y + TOP_H / 2, z]}
+      color="#ffd400"
+      textures={SCUFFS}
+    />
+  )
+}
+
 // Night-time panorama seen through the windows, turned so the street lamp
 // sits out front
 function NightSky() {
@@ -156,7 +198,7 @@ function NightSky() {
 function Ceiling() {
   const maps = useMemo(() => {
     const { map, normalMap, roughnessMap, emissiveMap } = CEILING
-    return [map, normalMap, roughnessMap, emissiveMap!].map((t) => {
+    return [map!, normalMap, roughnessMap, emissiveMap!].map((t) => {
       const tex = t.clone()
       tex.repeat.set(CEILING_REPEAT, CEILING_REPEAT)
       // shift so the panels (at 0.42/0.92 across the image) sit at 0.25/0.75
@@ -201,6 +243,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
   return (
     <group ref={ref}>
       <NightSky />
+      <ShadowRefresh />
       {/* shell */}
       <Block size={[STORE_WIDTH, WALL, depth]} position={[0, -WALL / 2, centerZ]} color={FLOOR_COLOR} />
       <Carpet width={STORE_WIDTH} depth={depth} z={centerZ} />
@@ -264,22 +307,20 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* checkout counter, customers stand between it and the front wall */}
       <group name="counter" userData={{ label: 'Counter' }}>
-        <Block size={COUNTER_SIZE} position={[cx, COUNTER_SIZE[1] / 2, cz]} color={TRIM_COLOR} />
-        <Block
-          size={[COUNTER_SIZE[0] + 0.1, 0.05, COUNTER_SIZE[2] + 0.1]}
-          position={[cx, COUNTER_SIZE[1] + 0.02, cz]}
-          color="#ffd400"
-        />
+        <Block size={COUNTER_SIZE} position={[cx, COUNTER_SIZE[1] / 2, cz]} color={TRIM_COLOR} textures={SCUFFS} />
+        <TableTop width={COUNTER_SIZE[0]} depth={COUNTER_SIZE[2]} position={[cx, COUNTER_SIZE[1], cz]} />
       </group>
-      <Computer position={[cx, COUNTER_SIZE[1] + 0.045, cz]} />
+      <Computer position={[cx, COUNTER_SIZE[1] + TOP_H, cz]} />
 
       {/* rewinder table against the left wall, between shelf A and the counter */}
       <Block
         size={REWINDER_TABLE_SIZE}
         position={[rx, REWINDER_TABLE_SIZE[1] / 2, rz]}
         color={TRIM_COLOR}
+        textures={SCUFFS}
       />
-      <group position={[rx, REWINDER_TABLE_SIZE[1], rz]} rotation={[0, Math.PI / 2, 0]}>
+      <TableTop width={REWINDER_TABLE_SIZE[0]} depth={REWINDER_TABLE_SIZE[2]} position={[rx, REWINDER_TABLE_SIZE[1], rz]} />
+      <group position={[rx, REWINDER_TABLE_SIZE[1] + TOP_H, rz]} rotation={[0, Math.PI / 2, 0]}>
         <TapeRewinder position={[0, 0.005, 0]} />
       </group>
       <Label
@@ -305,8 +346,9 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
 
       {/* quick drop bin for returned tapes */}
       <group name="dropBin" userData={{ label: 'Return box' }}>
-        <Block size={[0.6, 0.7, 0.6]} position={[bx, 0.35, bz]} color="#2e7d32" />
-        <ReturnBoxTapes position={[bx, 0.7, bz]} />
+        <Block size={[0.6, 0.7, 0.6]} position={[bx, 0.35, bz]} color="#2e7d32" textures={SCUFFS} />
+        <TableTop width={0.6} depth={0.6} position={[bx, 0.7, bz]} />
+        <ReturnBoxTapes position={[bx, 0.7 + TOP_H, bz]} />
       </group>
       <Label
         text="RETURNS"
@@ -344,6 +386,12 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
               intensity={LIGHT_INTENSITY}
               distance={5}
               color="#eef8ff"
+              castShadow={SHADOW_LIGHTS.includes(key)}
+              shadow-mapSize-width={1024}
+              shadow-mapSize-height={1024}
+              shadow-bias={-0.002}
+              shadow-camera-near={0.05}
+              shadow-camera-far={5}
             />
           )
         }),
@@ -370,6 +418,7 @@ function Computer({ position }: { position: [number, number, number] }) {
         height={0.27}
         background={count ? '#0b3d0b' : '#082008'}
         color="#4cff4c"
+        glow
       />
       {/* keyboard */}
       <Block size={[0.42, 0.03, 0.14]} position={[x, y, z + 0.18]} color="#cfc9b8" />
