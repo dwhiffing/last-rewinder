@@ -49,10 +49,8 @@ const GLASS = '#9fc6e8'
 const GLASS_GLOW = '#3d5a7a'
 
 const LIGHT_INTENSITY = 1.25
-// Panels (by grid fraction) whose tubes are dead, ones smashed out of the
-// ceiling, and one on its way out
-const DEAD_LIGHTS = ['0.625,0.375']
-const BROKEN_LIGHTS = ['0.125,0.875', '0.875,0.125', '0.375,0.125']
+// Panels (by grid fraction) whose tubes are dead, and one on its way out
+const DEAD_LIGHTS = ['0.625,0.375', '0.125,0.875', '0.875,0.125', '0.375,0.125']
 const FLICKER_LIGHTS = ['0.375,0.625']
 // A light panel's size on the ceiling (about 0.154 of one texture copy)
 const PANEL_W = (STORE_WIDTH / CEILING_REPEAT) * 0.154
@@ -70,27 +68,6 @@ function PanelCover({ position, coverRef }: { position: [number, number, number]
 
 function DeadPanel({ position }: { position: [number, number, number] }) {
   return <PanelCover position={position} />
-}
-
-// Smashed panel: a dark hole where the light was, with its cover hanging
-// down off one edge
-function BrokenPanel({ position, hang }: { position: [number, number, number]; hang: number }) {
-  const [x, , z] = position
-  return (
-    <>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[x, STORE_HEIGHT - 0.004, z]}>
-        <planeGeometry args={[PANEL_W, PANEL_D]} />
-        <meshBasicMaterial color="#0b0b0c" />
-      </mesh>
-      {/* cover hinged on its -x edge, swung down */}
-      <group position={[x - PANEL_W / 2, STORE_HEIGHT - 0.01, z]} rotation={[0, 0, -hang]}>
-        <mesh position={[PANEL_W / 2, 0, 0]} castShadow>
-          <boxGeometry args={[PANEL_W, 0.008, PANEL_D]} />
-          <meshStandardMaterial color="#cfd6d6" roughness={0.4} />
-        </mesh>
-      </group>
-    </>
-  )
 }
 
 // A dying tube: mostly on, with bursts of stuttering off
@@ -283,8 +260,6 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
           const key = `${fx},${fz}`
           const position: [number, number, number] = [-halfW + fx * STORE_WIDTH, STORE_HEIGHT, FRONT_Z + fz * depth]
           if (DEAD_LIGHTS.includes(key)) return <DeadPanel key={key} position={position} />
-          const broken = BROKEN_LIGHTS.indexOf(key)
-          if (broken >= 0) return <BrokenPanel key={key} position={position} hang={0.5 + broken * 0.35} />
           if (FLICKER_LIGHTS.includes(key)) return <FlickerPanel key={key} position={position} />
           return (
             <pointLight
