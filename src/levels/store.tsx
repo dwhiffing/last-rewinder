@@ -141,7 +141,7 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       {NODES.map((n) => (
         <mesh key={n.id} position={[n.x, 0.005, n.z]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.18, 24]} />
-          <meshBasicMaterial color="#ffd400" transparent opacity={0.35} />
+          <meshBasicMaterial color="#ffd400" transparent opacity={0.5} />
         </mesh>
       ))}
 
