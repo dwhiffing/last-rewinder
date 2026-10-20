@@ -49,16 +49,20 @@ function TapeArtefacts() {
     let tear: { y: number; h: number; life: number } | null = null
     let frame = 0
     let raf = 0
+    // whether the last frame drew anything, so a blank canvas isn't cleared
+    // (and recomposited) over and over between glitches
+    let dirty = false
     const draw = () => {
       raf = requestAnimationFrame(draw)
       // ~30fps is plenty and looks more like video
       if (frame++ % 2) return
       const { width: w, height: h } = canvas
-      g.clearRect(0, 0, w, h)
 
       if (!tear && Math.random() < 0.0054) {
         tear = { y: Math.random() * h, h: 2 + Math.random() * h * 0.06, life: 3 + Math.floor(Math.random() * 6) }
       }
+      if (dirty) g.clearRect(0, 0, w, h)
+      dirty = !!tear
 
       if (tear) {
         // a band of grainy static, with a few brighter shifted lines

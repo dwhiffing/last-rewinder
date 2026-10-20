@@ -10,6 +10,7 @@ import {
   SHELF_TIERS,
   SHELF_WIDTH,
   SLOTS_PER_TIER,
+  SHELF_SIGNS,
   slotId,
 } from '../../data/storeLayout'
 import useGameStore from '../../stores/gameStore'
@@ -19,6 +20,7 @@ import Label from './label'
 import { coveringSlot } from '../../data/storeLayout'
 import SnackBox, { snackBoxSize } from './snackBox'
 import SodaCan, { CAN_HEIGHT, CAN_RADIUS } from './sodaCan'
+import { drawSleeveRim, sleeveEdgeTexture, sleeveSideTexture, sleeveVariant } from './sleeveArt'
 
 const PANEL = 0.03
 // A header panel across the top of the front carries the shelf's sign
@@ -26,12 +28,18 @@ const HEADER = 0.24
 const tierSpacing = (SHELF_HEIGHT - HEADER - PANEL) / SHELF_TIERS
 
 // A VHS box standing spine-out, filling the full height between tier boards
-const TAPE_SIZE: [number, number, number] = [0.0765, tierSpacing - PANEL, 0.13]
+export const TAPE_SIZE: [number, number, number] = [0.0765, tierSpacing - PANEL, 0.13]
 const slotSpacing = (SHELF_WIDTH - PANEL * 2) / SLOTS_PER_TIER
+// Shelved tapes are drawn a touch smaller than their slot, standing on the
+// board with their spines where the full-size ones would be
+const SHELF_TAPE_SCALE = 0.95
+const SHELF_TAPE_SIZE = TAPE_SIZE.map((n) => n * SHELF_TAPE_SCALE) as [number, number, number]
 
 // The click box reaches well past the shelf front (hit slop), so a tape is
 // easy to point at and stays hovered while it slides out
-const HIT_SLOP = 0.08
+const HIT_SLOP = 0.12
+// the item's own hover shape is padded out a little on every side too
+export const HOVER_PAD = 0.015
 const HIT_FRONT = SHELF_DEPTH / 2 + 0.005 + HIT_SLOP
 const HIT_BACK = SHELF_DEPTH / 2 - TAPE_SIZE[2] - 0.01
 
@@ -39,12 +47,12 @@ const HIT_BACK = SHELF_DEPTH / 2 - TAPE_SIZE[2] - 0.01
 // depth, so it comes all the way out of the shelf, growing around its own
 // centre as it goes
 const HOVER_POP_CLEARANCE = 0.01
-const HOVER_POP_EXTRA = 1.3225
+const HOVER_POP_EXTRA = 1.455
 const HOVER_POP_SECONDS = 0.15
-const HOVER_SCALE = 1.26
+const HOVER_SCALE = 1.386
 const popDistance = (depth: number) => (depth + HOVER_POP_CLEARANCE) * HOVER_POP_EXTRA
 const _toCamera = new Vector3()
-function HoverPop({
+export function HoverPop({
   hovered,
   depth,
   center,
@@ -66,6 +74,8 @@ function HoverPop({
   useFrame(({ camera }, delta) => {
     const group = ref.current
     if (!group?.parent) return
+    // resting and staying put: nothing to do (most tapes, most frames)
+    if (!hovered && group.position.z === 0) return
     // 0 at rest, 1 fully out; moves linearly so it takes HOVER_POP_SECONDS
     const now = group.position.z / distance
     const step = delta / HOVER_POP_SECONDS
@@ -124,11 +134,11 @@ export function spineTexture(tapeId: string) {
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = 4
   spineTextures.set(tapeId, tex)
-  drawSpine(canvas, snack, tape)
+  drawSpine(canvas, snack, tape, markerInk(tapeId))
   // redraw once the marker font has loaded, if it wasn't ready yet
   if (!document.fonts.check(SPINE_FONT_CHECK)) {
     document.fonts.load(SPINE_FONT_CHECK).then(() => {
-      drawSpine(canvas, snack, tape)
+      drawSpine(canvas, snack, tape, markerInk(tapeId))
       tex.needsUpdate = true
     })
   }
@@ -136,18 +146,45 @@ export function spineTexture(tapeId: string) {
 }
 
 const SPINE_FONT_CHECK = '32px "Permanent Marker"'
+// Each label was written with whichever marker was to hand - picked from
+// the id so the same tape always looks the same. [ink, weight]
+const MARKER_INKS: [string, number][] = [
+  ['#1328C6', 40], // blue
+  ['#141414', 30], // black
+  ['#b3161b', 15], // red
+  ['#16803a', 15], // green
+]
+const MARKER_TOTAL = MARKER_INKS.reduce((sum, [, w]) => sum + w, 0)
+function markerInk(tapeId: string) {
+  // FNV-1a, then scrambled so ids differing by one digit still spread evenly
+  let hash = 2166136261
+  for (let i = 0; i < tapeId.length; i++) hash = Math.imul(hash ^ tapeId.charCodeAt(i), 16777619)
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b)
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35)
+  hash ^= hash >>> 16
+  let roll = (hash >>> 0) % MARKER_TOTAL
+  for (const [ink, weight] of MARKER_INKS) {
+    if (roll < weight) return ink
+    roll -= weight
+  }
+  return MARKER_INKS[0][0]
+}
+
 function drawSpine(
   canvas: HTMLCanvasElement,
   snack: ReturnType<typeof snackOf> | null,
   tape: ReturnType<typeof tapeById> | null,
+  ink: string,
 ) {
   const g = canvas.getContext('2d')!
   g.setTransform(1, 0, 0, 1, 0, 0)
   const W = canvas.width
   const H = canvas.height
-  // black plastic spine with a white sticker label, rounded at the corners
+  // black plastic spine with a white sticker label, rounded at the corners,
+  // showing through the open end of its worn card sleeve
   g.fillStyle = '#111'
   g.fillRect(0, 0, W, H)
+  if (tape) drawSleeveRim(g, tape.id, GENRE_COLORS[tape.genre], W, H)
   const labelW = W * 0.8
   const labelH = H * 0.76
   g.fillStyle = '#f4efe2'
@@ -156,7 +193,7 @@ function drawSpine(
   g.fill()
   g.translate(W / 2, H / 2)
   g.rotate(-Math.PI / 2)
-  g.fillStyle = '#1328C6'
+  g.fillStyle = ink
   g.textAlign = 'center'
   g.textBaseline = 'alphabetic'
   const title = (snack ? snack.type : tape!.title).toUpperCase()
@@ -180,7 +217,9 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
   const tapeId = useGameStore((s) => s.slots[id])
   // the right half of a wide snack box: the box itself takes the clicks
   const covered = useGameStore((s) => !!coveringSlot(s.slots, id))
-  const hovered = useGameStore((s) => s.hovered?.kind === 'tape' && s.hovered.slotId === id)
+  const hovered = useGameStore(
+    (s) => s.hovered?.kind === 'tape' && s.hovered.slotId === id && s.hovered.popOut !== false,
+  )
   if (covered) return null
   const position = slotPosition(tier, slot)
 
@@ -228,16 +267,31 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
     item = <SnackBox type={snack.type} size={size} position={center} />
   } else {
     item = (
-      <mesh position={position}>
-        <boxGeometry args={TAPE_SIZE} />
-        {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z */}
-        {[0, 1, 2, 3, 4, 5].map((face) =>
-          face === 4 ? (
-            <meshStandardMaterial key={face} attach={`material-${face}`} map={spineTexture(tapeId)} roughness={0.6} />
+      <mesh
+        position={[
+          x,
+          y - (TAPE_SIZE[1] - SHELF_TAPE_SIZE[1]) / 2,
+          z + (TAPE_SIZE[2] - SHELF_TAPE_SIZE[2]) / 2,
+        ]}>
+        <boxGeometry args={SHELF_TAPE_SIZE} />
+        {/* box faces are +x, -x, +y, -y, +z (the spine, facing out), -z;
+            the sides and ends are the worn card sleeve */}
+        {[0, 1, 2, 3, 4, 5].map((face) => {
+          const variant = sleeveVariant(tapeId)
+          const map =
+            face === 4
+              ? spineTexture(tapeId)
+              : face < 2
+                ? sleeveSideTexture(color, SHELF_TAPE_SIZE[2], SHELF_TAPE_SIZE[1], variant)
+                : face < 4
+                  ? sleeveEdgeTexture(color, SHELF_TAPE_SIZE[0], SHELF_TAPE_SIZE[2], variant)
+                  : null
+          return map ? (
+            <meshStandardMaterial key={face} attach={`material-${face}`} map={map} roughness={face === 4 ? 0.6 : 0.85} />
           ) : (
-            <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.6} />
-          ),
-        )}
+            <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.85} />
+          )
+        })}
       </mesh>
     )
   }
@@ -248,7 +302,7 @@ const Slot = memo(function Slot({ id, tier, slot }: { id: string; tier: number; 
       {hitBox(hovered ? Math.max(HIT_FRONT, SHELF_DEPTH / 2 + popDistance(depth) + (depth * (HOVER_SCALE - 1)) / 2) : HIT_FRONT)}
       {/* the item's shape at rest, for hover and clicks */}
       <mesh position={center} userData={{ hoverProxy: true }}>
-        <boxGeometry args={restSize} />
+        <boxGeometry args={[restSize[0] + HOVER_PAD * 2, restSize[1] + HOVER_PAD * 2, restSize[2] + HOVER_PAD * 2]} />
         <meshBasicMaterial visible={false} />
       </mesh>
       <HoverPop hovered={hovered} depth={depth} center={center}>
@@ -301,7 +355,7 @@ export function TapeShelf({
       </group>
 
       <Label
-        text={`SHELF ${id}`}
+        text={SHELF_SIGNS[id] ?? `SHELF ${id}`}
         marquee
         // fills the header between the side panels, above the top board
         position={[0, SHELF_HEIGHT - HEADER / 2, SHELF_DEPTH / 2 - 0.002]}
@@ -311,12 +365,12 @@ export function TapeShelf({
         color="#ffd400"
       />
 
-      {/* the bottom tier is closed off with a plain blue panel */}
+      {/* the tiers below the first slots are closed off with a plain blue panel */}
       <Label
         text=""
-        position={[0, PANEL + (tierSpacing - PANEL) / 2, SHELF_DEPTH / 2 - 0.002]}
+        position={[0, PANEL + (FIRST_TIER * tierSpacing - PANEL) / 2, SHELF_DEPTH / 2 - 0.002]}
         width={SHELF_WIDTH - PANEL * 2}
-        height={tierSpacing - PANEL}
+        height={FIRST_TIER * tierSpacing - PANEL}
         background="#142c86"
       />
 

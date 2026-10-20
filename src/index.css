@@ -1,7 +1,16 @@
+/* HUD sits this far in from the screen edges, clear of the curved tube */
+:root {
+  --hud-inset-x: 6vw;
+  --hud-inset-y: 6vh;
+  /* room along the top for the yellow message line (and the sound-mode note
+     stacked with it); the corner HUD sits below it */
+  --hud-message-band: 48px;
+}
+
 body {
   background-color: black;
   color: white;
-  font-family: sans-serif;
+  font-family: 'Asap Sharp', sans-serif;
   padding: 0;
 }
 
@@ -24,7 +33,7 @@ body {
 }
 .ui {
   position: absolute;
-  top: 16px;
+  top: calc(16px + var(--hud-inset-y));
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
@@ -45,6 +54,9 @@ body {
 }
 .scene-fade.visible {
   opacity: 1;
+}
+/* swallows clicks for the whole transition, fading back in included */
+.scene-fade.blocking {
   pointer-events: auto;
 }
 
@@ -71,11 +83,11 @@ body {
 .look-prompt {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: calc(24px + var(--hud-inset-y));
   transform: translateX(-50%);
   z-index: 1;
   color: white;
-  font-size: 15px;
+  font-size: 38px;
   text-align: center;
   text-shadow: 0 1px 3px black;
   pointer-events: none;
@@ -84,7 +96,7 @@ body {
   gap: 4px;
 }
 .look-hint {
-  font-size: 11px;
+  font-size: 18px;
   opacity: 0.7;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -92,8 +104,8 @@ body {
 
 .nav-buttons {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: calc(16px + var(--hud-inset-x));
+  bottom: calc(16px + var(--hud-inset-y));
   z-index: 3;
   display: grid;
   grid-template-columns: repeat(3, 52px);
@@ -119,8 +131,8 @@ body {
 
 .carried {
   position: fixed;
-  top: 52px;
-  left: 16px;
+  top: calc(52px + var(--hud-inset-y) + var(--hud-message-band));
+  left: calc(16px + var(--hud-inset-x));
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -130,11 +142,11 @@ body {
   border-radius: 10px;
   background: rgba(20, 30, 60, 0.6);
   color: white;
-  font-size: 13px;
+  font-size: 15.6px;
   pointer-events: none;
 }
 .carried-title {
-  font-size: 11px;
+  font-size: 13.2px;
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.7;
@@ -158,8 +170,8 @@ body {
 
 .money-hud {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: calc(16px + var(--hud-inset-y) + var(--hud-message-band));
+  right: calc(16px + var(--hud-inset-x));
   z-index: 1;
   padding: 10px 12px;
   border-radius: 10px;
@@ -201,6 +213,8 @@ body {
   background: #061a06;
   color: #4cff4c;
   font-family: 'Courier New', monospace;
+  /* 40% up on the 16px default, for text that doesn't set its own size */
+  font-size: 22.4px;
   box-shadow: 0 0 40px rgba(76, 255, 76, 0.15) inset;
 }
 .computer-title {
@@ -216,10 +230,10 @@ body {
   color: #4cff4c;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 19.6px;
 }
 .computer-hint {
-  font-size: 12px;
+  font-size: 16.8px;
   opacity: 0.75;
   margin: 6px 0 12px;
 }
@@ -252,7 +266,7 @@ body {
 .order-head {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 16.8px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -263,18 +277,15 @@ body {
   color: #061a06;
   font-weight: bold;
 }
-.kind-clue .order-kind {
+.kind-suggestion .order-kind {
   background: #ffd400;
-}
-.kind-requirements .order-kind {
-  background: #6bd5ff;
 }
 .order-reward {
   color: #ffd400;
   font-weight: bold;
 }
 .order-text {
-  font-size: 14px;
+  font-size: 19.6px;
   line-height: 1.35;
 }
 .order-tags {
@@ -283,7 +294,7 @@ body {
   gap: 6px;
 }
 .order-tags span {
-  font-size: 12px;
+  font-size: 16.8px;
   padding: 2px 6px;
   border: 1px solid #6bd5ff;
   border-radius: 10px;
@@ -291,7 +302,7 @@ body {
 }
 .order-progress,
 .order-time {
-  font-size: 11px;
+  font-size: 15.4px;
   opacity: 0.75;
 }
 .order-timer {
@@ -308,14 +319,19 @@ body {
   background: #ff6b6b;
 }
 
+/* runs to the bottom of the screen: the pile view below reaches the edge so
+   picked-up items rise in from it; the pile rests where the card used to sit */
 .tape-card {
   position: fixed;
-  left: 16px;
-  bottom: 16px;
+  /* flush to the left edge, out of the way of what you're looking at */
+  left: 0;
+  bottom: 0;
   z-index: 2;
-  width: 170px;
+  /* one width whatever's on top, so the pile view never resizes and jumps */
+  width: min(509px, 40vw);
   perspective: 800px;
-  cursor: pointer;
+  /* nothing on it to click (F flips): clicks go through to the store */
+  pointer-events: none;
   user-select: none;
 }
 .tape-card-inner {
@@ -403,15 +419,20 @@ body {
 }
 .tape-card-hint {
   margin-top: 6px;
-  font-size: 10px;
+  font-size: 18px;
+  font-weight: bold;;
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.7;
   text-shadow: 0 1px 3px black;
 }
 
+/* lines in the top-right panel: 20% more room than the font's normal ~1.2 */
+.money-hud > div {
+  line-height: 1.44;
+}
 .day-clock {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1px;
   opacity: 0.85;
 }
@@ -448,14 +469,40 @@ body {
   background: rgba(0, 0, 0, 0.7);
   padding: 16px;
 }
-/* end of day: the store fades fully to black before the summary shows */
-.day-summary.day-end {
+/* end of day: the store fades fully to black before the summary shows, then
+   back in from black once the next day has started */
+.day-summary.day-fade {
   background: black;
+}
+.day-summary.toBlack {
   animation: dayEndFade linear forwards;
+}
+.day-summary.fromBlack {
+  animation: dayStartFade ease-out forwards;
+  /* the store's playable again while it fades in */
+  pointer-events: none;
 }
 @keyframes dayEndFade {
   from { background-color: rgba(0, 0, 0, 0); }
   to { background-color: rgba(0, 0, 0, 1); }
+}
+@keyframes dayStartFade {
+  from { background-color: rgba(0, 0, 0, 1); }
+  to { background-color: rgba(0, 0, 0, 0); }
+}
+.day-fade .day-summary-card {
+  animation: cardFadeIn ease-out both;
+}
+.day-fade .day-summary-card.leaving {
+  animation: cardFadeOut ease-in both;
+}
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cardFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 .day-summary-card {
   display: flex;
@@ -466,7 +513,7 @@ body {
   border-radius: 12px;
   background: #1d3fbf;
   border: 3px solid #ffd400;
-  font-size: 15px;
+  font-size: 21px;
 }
 .day-summary-card h2 {
   margin: 0 0 6px;
@@ -484,7 +531,7 @@ body {
   background: #ffd400;
   color: #111;
   font-weight: bold;
-  font-size: 15px;
+  font-size: 21px;
   cursor: pointer;
 }
 .order-foot {
@@ -492,20 +539,6 @@ body {
   justify-content: space-between;
   align-items: center;
 }
-.order-missing {
-  padding: 3px 8px;
-  border: 1px solid #ff6b6b;
-  border-radius: 4px;
-  background: none;
-  color: #ff6b6b;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.order-missing:hover {
-  background: rgba(255, 107, 107, 0.15);
-}
-
 .order-progress {
   display: flex;
   flex-wrap: wrap;
@@ -528,22 +561,6 @@ body {
 .order-foot .order-time {
   margin-right: auto;
 }
-.order-submit {
-  padding: 3px 10px;
-  border: none;
-  border-radius: 4px;
-  background: #4cff4c;
-  color: #061a06;
-  font: inherit;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.order-submit:disabled {
-  background: rgba(76, 255, 76, 0.2);
-  color: rgba(6, 26, 6, 0.6);
-  cursor: default;
-}
 .snack-shop {
   margin-top: 16px;
   padding-top: 12px;
@@ -564,7 +581,7 @@ body {
   background: rgba(76, 255, 76, 0.06);
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: 18.2px;
   cursor: pointer;
 }
 .snack-list button:disabled {
@@ -578,11 +595,11 @@ body {
 }
 .snack-cost {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 19.6px;
   opacity: 0.8;
 }
 .rent-line {
-  font-size: 11px;
+  font-size: 14px;
   opacity: 0.85;
 }
 .rent-line.short {
@@ -591,11 +608,30 @@ body {
 }
 .debug-buttons {
   position: fixed;
-  top: 16px;
-  left: 16px;
+  top: calc(16px + var(--hud-inset-y) + var(--hud-message-band));
+  left: calc(16px + var(--hud-inset-x));
   z-index: 3;
   display: flex;
+  flex-wrap: wrap;
+  max-width: 560px;
   gap: 6px;
+}
+/* debug: the game view without its CSS colour grade and blur */
+.game.no-filter {
+  filter: none;
+}
+.perf-panel {
+  flex-basis: 100%;
+  padding: 6px 10px;
+  border: 1px dashed #ffd400;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffd400;
+  font: 12px/1.45 ui-monospace, Menlo, monospace;
+}
+.perf-panel b {
+  color: #fff;
+  font-weight: 600;
 }
 .debug-buttons button {
   padding: 4px 10px;
@@ -633,18 +669,23 @@ body {
     transparent 1.33px,
     transparent 4px
   );
-  /* the lines slowly crawl down the screen */
+  /* the lines slowly crawl down the screen. Moved with a transform (one line
+     taller than the screen) rather than background-position, so the browser
+     just slides a cached layer instead of repainting it every frame */
+  top: -4px !important;
+  will-change: transform;
   animation: vhsScanCrawl 1.67s linear infinite;
 }
 @keyframes vhsScanCrawl {
-  from { background-position: 0 0; }
-  to { background-position: 0 4px; }
+  from { transform: translateY(0); }
+  to { transform: translateY(4px); }
 }
 .vhs-noise {
   inset: -50% !important;
   opacity: 0.09;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: vhsGrain 0.4s steps(4) infinite;
+  will-change: transform;
   mix-blend-mode: overlay;
 }
 .vhs-tracking {
@@ -660,6 +701,7 @@ body {
     transparent
   );
   /* same speed as before, but it only rolls by every 14s */
+  will-change: transform;
   animation: vhsTracking 14s linear infinite;
 }
 /* A faint, always-on wash of chromatic interference noise. Tiled vertically
@@ -669,32 +711,41 @@ body {
    height is fixed in px (not %) so the loop point lines up exactly and the
    scroll never visibly jumps. */
 .vhs-chroma {
+  /* 160% wide so it can sway, and one tile taller than the screen so it can
+     roll down a whole tile and loop seamlessly. Both moves are transforms
+     (translate for the sway, transform for the roll, so they combine), which
+     slide a cached layer instead of repainting it every frame. */
+  top: -220px !important;
+  left: -30% !important;
+  right: -30% !important;
   background-image: url('./assets/vhs-tracking.webp');
   background-repeat: repeat-y;
-  background-size: 160% 220px;
+  background-size: 100% 220px;
   opacity: 0.12;
   mix-blend-mode: color-dodge;
+  will-change: transform, translate;
   /* a fast downward roll, with a slow sine sway left/right on its own clock */
   animation:
     vhsChromaRoll 0.9s linear infinite,
     vhsChromaSway 26s linear infinite;
 }
 @keyframes vhsChromaRoll {
-  from { background-position-y: 0px; }
-  to { background-position-y: 220px; }
+  from { transform: translateY(0); }
+  to { transform: translateY(220px); }
 }
+/* percentages of its own (160%) width: the same sway as before */
 @keyframes vhsChromaSway {
-  0%   { background-position-x: 50%; }
-  10%  { background-position-x: 58.8%; }
-  20%  { background-position-x: 64.3%; }
-  30%  { background-position-x: 64.3%; }
-  40%  { background-position-x: 58.8%; }
-  50%  { background-position-x: 50%; }
-  60%  { background-position-x: 41.2%; }
-  70%  { background-position-x: 35.7%; }
-  80%  { background-position-x: 35.7%; }
-  90%  { background-position-x: 41.2%; }
-  100% { background-position-x: 50%; }
+  0%   { translate: 0 0; }
+  10%  { translate: -3.3% 0; }
+  20%  { translate: -5.36% 0; }
+  30%  { translate: -5.36% 0; }
+  40%  { translate: -3.3% 0; }
+  50%  { translate: 0 0; }
+  60%  { translate: 3.3% 0; }
+  70%  { translate: 5.36% 0; }
+  80%  { translate: 5.36% 0; }
+  90%  { translate: 3.3% 0; }
+  100% { translate: 0 0; }
 }
 .vhs-vignette {
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
@@ -745,14 +796,21 @@ body {
   75% { transform: scale(1.05) rotate(0deg); }
   100% { transform: scale(1) rotate(-2deg); }
 }
+/* ITC Machine is all caps but keeps 0.283em of descender room below the
+   baseline, so the words would sit high: line-height 1 makes the box exactly
+   the em, and the extra top padding balances that empty space. The right
+   padding loses the trailing letter-spacing so the text centres sideways. */
 .menu-start {
-  padding: 14px 34px;
+  padding: calc(14px + 0.283em) calc(34px - 2px) 14px 34px;
   border: 3px solid #ffd400;
   border-radius: 6px;
-  background: transparent;
-  color: #ffd400;
+  background: #ffd400;
+  color: #1d3fbf;
   font: inherit;
-  font-size: 18px;
+  font-family: 'ITC Machine', 'Arial Black', sans-serif;
+  font-weight: bold;
+  font-size: 58px;
+  line-height: 1;
   letter-spacing: 2px;
   text-transform: uppercase;
   pointer-events: none;
@@ -782,21 +840,15 @@ body {
 /* curved tube TV screen: rounded black corners and a deep inner shadow */
 .vhs .vhs-tube {
   inset: 0;
-  border-radius: 6% / 9%;
+  border-radius: 3% / 4.5%;
   box-shadow:
     0 0 0 60px #000,
-    inset 0 0 60px 18px rgba(0, 0, 0, 0.75),
-    inset 0 0 12px 2px rgba(0, 0, 0, 0.9);
+    inset 0 0 40px 9px rgba(0, 0, 0, 0.6),
+    inset 0 0 8px 1px rgba(0, 0, 0, 0.8);
 }
 
 .snack-card {
-  width: 210px;
   cursor: default;
-}
-.snack-art {
-  display: block;
-  width: 100% !important;
-  height: 230px !important;
 }
 
 /* the on-screen arrows are only for touch screens; keyboards use the keys */
@@ -812,13 +864,27 @@ body {
   font-weight: bold;
 }
 
-.held-card {
-  width: 285px;
-}
 .held-art {
   display: block;
   width: 100% !important;
-  height: 390px !important;
+  /* up to 644px or 60% of the window's height for the pile (PILE_REGION_PX
+     and PILE_REGION_VH in Game.tsx), then the strip under it
+     down to the screen's edge */
+  height: calc(min(644px, 60vh, 50vw) + 22px + 16px + var(--hud-inset-y)) !important;
+}
+.tape-card.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+.tape-card .tape-card-hint {
+  position: absolute;
+  /* left is set every frame to sit centred under the front item */
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  bottom: calc(16px + var(--hud-inset-y));
+  margin: 0;
+  text-align: center;
 }
 
 .restore-power {
@@ -826,7 +892,7 @@ body {
   margin: 24px auto;
   padding: 14px 28px;
   font: inherit;
-  font-size: 18px;
+  font-size: 25.2px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #0b1a0b;
@@ -859,4 +925,38 @@ body {
 }
 .custom-cursor.dim {
   opacity: 0.5;
+}
+
+/* the corner HUD fades back while you're pointing at something (the prompt
+   naming it and the messages along the top stay) */
+.money-hud,
+.carried,
+.nav-buttons,
+.debug-buttons {
+  transition: opacity 0.15s;
+}
+.hud-dim .money-hud,
+.hud-dim .carried,
+.hud-dim .nav-buttons,
+.hud-dim .debug-buttons {
+  opacity: 0.3;
+}
+
+/* buttons in the computer and day-end screens: a comfortably big target */
+.computer button,
+.day-summary-card button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.computer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+/* invisible hit slop well past the visible box */
+.computer-close::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
 }

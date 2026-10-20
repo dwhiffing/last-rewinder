@@ -9,7 +9,7 @@ export function DebugLevel() {
     <>
       <Controller />
       <Store />
-      <hemisphereLight args={['#fffaf0', '#3a4a6b', powerOut ? 0.004 : 0.4]} />
+      <hemisphereLight args={['#fffaf0', '#3a4a6b', powerOut ? 0.004 : 0.246]} />
     </>
   )
 }

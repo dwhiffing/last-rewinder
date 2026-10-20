@@ -17,7 +17,7 @@ export const SNACKS: Record<SnackType, Snack> = {
   Candy: { type: 'Candy', cost: 1, price: 2, color: '#f4cf1f' },
   Soda: { type: 'Soda', cost: 1, price: 2, color: '#d63031' },
   Chips: { type: 'Chips', cost: 1, price: 3, color: '#1c2f73' },
-  Licorice: { type: 'Licorice', cost: 2, price: 4, color: '#c61f26' },
+  Licorice: { type: 'Licorice', cost: 1, price: 4, color: '#c61f26' },
 }
 
 export const SNACK_TYPES = Object.keys(SNACKS) as SnackType[]

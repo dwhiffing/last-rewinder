@@ -131,8 +131,8 @@ const _whooshBuffer = (() => {
 // Locked door: the leaf rattling against the latch. The door shakes for the
 // length of the clip, then the message shows.
 export const DOOR_RATTLE_SECONDS = 0.78
-export function playDoorRattle() {
-  playClip(lockedDoorClip, 1, 0.25)
+export function playDoorRattle(volume = 0.25) {
+  playClip(lockedDoorClip, 1, volume)
 }
 
 export function playWhoosh() {
@@ -183,7 +183,7 @@ const wallTapClip = loadClip(wallTapUrl)
 
 // Knocking on a wall
 export function playWallTap() {
-  playClip(wallTapClip)
+  playClip(wallTapClip, 1, 1.3)
 }
 const dayEndClip = loadClip(dayEndUrl)
 
@@ -194,7 +194,7 @@ export function playDayEnd() {
 
 // Knocking on the shop window
 export function playWindowTap() {
-  playClip(windowTapClip)
+  playClip(windowTapClip, 1, 1.5)
 }
 
 // Tapping on a shelf with nothing in your hands

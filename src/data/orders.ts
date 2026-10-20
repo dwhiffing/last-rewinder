@@ -8,12 +8,12 @@ import {
   type Length,
   lengthOf,
   type Rating,
-  RATINGS,
   type Tape,
   tapeById,
+  TAPES,
 } from './tapes'
 
-export type OrderKind = 'title' | 'requirements' | 'clue'
+export type OrderKind = 'title' | 'suggestion'
 
 export interface Criteria {
   title?: string
@@ -21,8 +21,10 @@ export interface Criteria {
   // accepted ratings ("Teen or under" = Kids + Teen)
   ratings?: Rating[]
   decade?: Decade
+  year?: number
   length?: Length
-  actor?: string
+  // any one of these actors will do
+  actors?: string[]
 }
 
 export interface OrderItem {
@@ -36,24 +38,22 @@ export interface Order {
   id: number
   kind: OrderKind
   text: string
-  // short tags for requirement orders, shown as chips
+  // short tags shown as chips (unused by the current kinds)
   tags: string[]
   items: OrderItem[]
   reward: number
   createdAt: number
   expiresAt: number
-  // asks for a tape the store doesn't own; the right answer is "Not in stock",
-  // which orders the tape in for tomorrow
-  missing?: boolean
-  // optional add-on: adding this snack before submitting earns its price too
+  // a snack order also needs one of these, and pays double
   snack?: SnackType
   snackFilled?: string | null
 }
 
+// base reward and time limit; suggestions add more for each point of
+// difficulty (see SUGGESTION_*_PER_COST)
 export const ORDER_RULES: Record<OrderKind, { reward: number; seconds: number }> = {
   title: { reward: 3, seconds: 60 },
-  requirements: { reward: 5, seconds: 75 },
-  clue: { reward: 8, seconds: 120 },
+  suggestion: { reward: 4, seconds: 60 },
 }
 
 export function matches(tape: Tape, c: Criteria) {
@@ -61,204 +61,321 @@ export function matches(tape: Tape, c: Criteria) {
   if (c.genre && tape.genre !== c.genre) return false
   if (c.ratings && !c.ratings.includes(tape.rating)) return false
   if (c.decade && tape.decade !== c.decade) return false
+  if (c.year && tape.year !== c.year) return false
   if (c.length && lengthOf(tape.minutes) !== c.length) return false
-  if (c.actor && !tape.actors.includes(c.actor)) return false
+  if (c.actors && !c.actors.some((a) => tape.actors.includes(a))) return false
   return true
 }
 
-const ratingsUpTo = (r: Rating) => RATINGS.slice(0, RATINGS.indexOf(r) + 1)
+// ---- suggestion orders ----------------------------------------------------
+// A customer describes what they're after from a few facts about one tape in
+// the store, and any tape fitting all of them will do. Each kind of fact
+// costs difficulty points, by how hard it is to check: the shelf signs give
+// away the genre, the front cover shows actors, year and rating, and length is
+// only on the back. How many points an order may cost, how many facts it may
+// use and how many tapes in the store must fit come from its tier (see
+// TIERS below).
 
-// ---- requirement orders ---------------------------------------------------
+type FactKey = 'genre' | 'eitherActor' | 'actor' | 'decade' | 'year' | 'rating' | 'length'
 
-type ReqKey = 'genre' | 'rating' | 'decade' | 'length' | 'actor'
+const FACT_COST: Record<FactKey, number> = {
+  genre: 0,
+  eitherActor: 1,
+  actor: 2,
+  decade: 1,
+  rating: 1,
+  year: 3,
+  length: 3,
+}
+const ALL_FACTS = Object.keys(FACT_COST) as FactKey[]
 
-function requirementCriteria(rand: Rand, tape: Tape) {
-  const keys = shuffle(rand, ['genre', 'rating', 'decade', 'length', 'actor'] as ReqKey[])
-  const chosen = keys.slice(0, rand() < 0.6 ? 2 : 3)
-  const criteria: Criteria = {}
-  const tags: string[] = []
-  for (const key of chosen) {
-    if (key === 'genre') {
-      criteria.genre = tape.genre
-      tags.push(tape.genre)
-    } else if (key === 'rating') {
-      criteria.ratings = ratingsUpTo(tape.rating)
-      tags.push(tape.rating === 'X' ? 'Any rating' : tape.rating === 'Kids' ? 'Kids only' : `${tape.rating} or under`)
-    } else if (key === 'decade') {
-      criteria.decade = tape.decade
-      tags.push(`From the ${tape.decade}`)
-    } else if (key === 'length') {
-      criteria.length = lengthOf(tape.minutes)
-      tags.push({ Short: 'Under 90 min', Standard: '90-120 min', Long: 'Over 2 hours' }[criteria.length])
-    } else {
-      criteria.actor = pick(rand, tape.actors)
-      tags.push(`Starring ${criteria.actor}`)
+interface SuggestionRules {
+  minCost: number
+  maxCost: number
+  maxFacts: number
+  // tapes in the store that must fit, so it isn't a needle in a haystack
+  minMatches: number
+  allowed: FactKey[]
+}
+interface Fact {
+  key: FactKey
+  criteria: Criteria
+  clause: string
+}
+
+const ALL_ACTORS = [...new Set(TAPES.flatMap((t) => t.actors))]
+
+// every fact that's true of a tape, each worded one of a few ways
+function factsAbout(rand: Rand, tape: Tape): Fact[] {
+  const actor = pick(rand, tape.actors)
+  const other = pick(
+    rand,
+    ALL_ACTORS.filter((a) => !tape.actors.includes(a)),
+  )
+  const pair = shuffle(rand, [actor, other])
+  const length = lengthOf(tape.minutes)
+  return [
+    {
+      key: 'genre',
+      criteria: { genre: tape.genre },
+      clause: pick(
+        rand,
+        {
+          Action: ['there are tons of explosions', "it's a real action flick"],
+          Comedy: ["it's really funny", "it'll make me laugh"],
+          Drama: ['it makes you cry', "it's a serious drama"],
+          Horror: ["it's scary", "it'll keep me up at night"],
+          'Sci-Fi': ["it's set in space or the future", 'there are robots or aliens'],
+          Family: ['the whole family can watch it', "it's a nice family movie"],
+        }[tape.genre],
+      ),
+    },
+    {
+      key: 'eitherActor',
+      criteria: { actors: pair },
+      clause: pick(rand, [
+        `${pair[0]} or ${pair[1]} is in it`,
+        `it's got ${pair[0]} or ${pair[1]} in it`,
+        `it stars either ${pair[0]} or ${pair[1]}`,
+      ]),
+    },
+    {
+      key: 'actor',
+      criteria: { actors: [actor] },
+      clause: pick(rand, [`${actor} is in it`, `it's got ${actor} in it`, `it stars ${actor}`]),
+    },
+    {
+      key: 'decade',
+      criteria: { decade: tape.decade },
+      clause: pick(rand, [`it's from the ${tape.decade}`, `it came out in the ${tape.decade}`]),
+    },
+    {
+      key: 'year',
+      criteria: { year: tape.year },
+      clause: pick(rand, [`it came out in ${tape.year}`, `it's from ${tape.year}`]),
+    },
+    {
+      key: 'rating',
+      criteria: { ratings: [tape.rating] },
+      clause: pick(
+        rand,
+        {
+          Kids: ["it's rated for kids", "it's fine for little ones"],
+          Teen: ["it's rated Teen", "it's rated for teens"],
+          Mature: ["it's rated Mature", "it's for grown-ups"],
+          X: ["it's rated X", "it's strictly adults only"],
+        }[tape.rating],
+      ),
+    },
+    {
+      key: 'length',
+      criteria: { length },
+      clause: pick(
+        rand,
+        {
+          Short: ["it's nice and short", "it's under an hour and a half"],
+          Standard: ["it's a normal length", "it's an hour and a half to two hours"],
+          Long: ["it's a long one", 'it runs over two hours'],
+        }[length],
+      ),
+    },
+  ]
+}
+
+// every way to pick 1..max facts (only ever one actor fact at a time)
+function factSets(facts: Fact[], max: number): Fact[][] {
+  const sets: Fact[][] = []
+  const grow = (from: number, chosen: Fact[]) => {
+    if (chosen.length) sets.push(chosen)
+    if (chosen.length === max) return
+    for (let i = from; i < facts.length; i++) {
+      // one actor fact at a time, and never a decade alongside an exact year
+      const actorFact = (f: Fact) => f.key === 'actor' || f.key === 'eitherActor'
+      const dateFact = (f: Fact) => f.key === 'decade' || f.key === 'year'
+      if (actorFact(facts[i]) && chosen.some(actorFact)) continue
+      if (dateFact(facts[i]) && chosen.some(dateFact)) continue
+      grow(i + 1, [...chosen, facts[i]])
     }
   }
-  return { criteria, tags }
+  grow(0, [])
+  return sets
 }
 
-const REQUEST_OPENERS = [
-  'Looking for something with these:',
-  'Need a movie for tonight:',
-  'Any suggestions? Must be:',
-  'Pick one for me:',
+const SUGGESTION_OPENERS = [
+  'Any suggestions?',
+  'Can you recommend something?',
+  "I'm looking for a movie.",
+  'Help me pick one?',
 ]
-
-// ---- clue orders (mad-libs) -----------------------------------------------
-
-type ClueKey = 'actor' | 'genre' | 'decade' | 'length' | 'rating'
-
-const CLUE_OPENERS = [
-  "Can't remember the name, but",
-  'My cousin told me about one where',
-  'There was this movie, I think',
-  "It's on the tip of my tongue.",
-  'Help! My date picked it and all I know is',
-]
-
-const CLUE_CLOSERS = ['Got it?', 'Any idea?', 'You know the one.', 'Please hurry!', '']
-
-const CLUE_PHRASES: Record<ClueKey, (tape: Tape, actor: string) => string[]> = {
-  actor: (_, actor) => [
-    `${actor} was in it`,
-    `it had ${actor} in it`,
-    `${actor} was amazing in it`,
-  ],
-  genre: (tape) =>
-    ({
-      Action: ['there were tons of explosions', 'it was a real action flick'],
-      Comedy: ['it was really funny', 'I laughed the whole time'],
-      Drama: ['it made me cry', 'it was a serious drama'],
-      Horror: ['it scared me half to death', 'I had to sleep with the lights on'],
-      'Sci-Fi': ['it was set in space or the future', 'there were robots or aliens'],
-      Family: ['the whole family can watch it', "it's a cute family movie"],
-    })[tape.genre],
-  decade: (tape) => [
-    `it came out in the ${tape.decade}`,
-    `it's from the ${tape.decade}`,
-    `my parents saw it in the ${tape.decade}`,
-  ],
-  length: (tape) =>
-    ({
-      Short: ['it was nice and short', "it's under an hour and a half"],
-      Standard: ['it was a regular length', 'it was about an hour and a half or two'],
-      Long: ['it was super long', 'it ran over two hours'],
-    })[lengthOf(tape.minutes)],
-  rating: (tape) =>
-    ({
-      Kids: ["it's rated for kids", "it's fine for little ones"],
-      Teen: ["it's rated Teen", 'my teenager loved it'],
-      Mature: ["it's rated Mature", 'it was strictly for grown-ups'],
-      X: ["it's rated X", 'not for kids, if you know what I mean'],
-    })[tape.rating],
-}
+const SUGGESTION_CLOSERS = ['', 'Any ideas?', 'Surprise me!', 'Thanks!']
 
 function joinClauses(clauses: string[]) {
   if (clauses.length === 1) return clauses[0]
   return `${clauses.slice(0, -1).join(', ')} and ${clauses[clauses.length - 1]}`
 }
 
-function clueOrder(rand: Rand, tape: Tape, pool: Tape[]) {
-  const criteria: Criteria = {}
-  const used: ClueKey[] = []
-  const actor = pick(rand, tape.actors)
-  // Keep adding facts until the target is the only tape in the store that
-  // fits, up to three so the sentence stays readable
-  for (const key of shuffle(rand, ['actor', 'genre', 'decade', 'length', 'rating'] as ClueKey[])) {
-    used.push(key)
-    if (key === 'actor') criteria.actor = actor
-    if (key === 'genre') criteria.genre = tape.genre
-    if (key === 'decade') criteria.decade = tape.decade
-    if (key === 'length') criteria.length = lengthOf(tape.minutes)
-    if (key === 'rating') criteria.ratings = [tape.rating]
-    const fits = pool.filter((t) => matches(t, criteria))
-    if ((used.length >= 2 && fits.length <= 1) || used.length >= 3) break
-  }
-  const clauses = used.map((key) => pick(rand, CLUE_PHRASES[key](tape, actor)))
-  const opener = pick(rand, CLUE_OPENERS)
-  const body = joinClauses(clauses)
-  const sentence = opener.endsWith('.')
-    ? `${opener} ${body[0].toUpperCase()}${body.slice(1)}.`
-    : `${opener} ${body}.`
-  const text = `${sentence} ${pick(rand, CLUE_CLOSERS)}`.trim()
-  return { criteria, text }
+// Builds a suggestion around `tape` within the rules; null if no set of
+// facts about it fits them (another tape is tried)
+function suggestionFor(rand: Rand, tape: Tape, pool: Tape[], rules: SuggestionRules) {
+  const cost = (set: Fact[]) => set.reduce((sum, f) => sum + FACT_COST[f.key], 0)
+  const merged = (set: Fact[]) => Object.assign({}, ...set.map((f) => f.criteria)) as Criteria
+  const facts = factsAbout(rand, tape).filter((f) => rules.allowed.includes(f.key))
+  const fitting = factSets(facts, rules.maxFacts).filter((set) => {
+    const c = cost(set)
+    return (
+      c >= rules.minCost &&
+      c <= rules.maxCost &&
+      pool.filter((t) => matches(t, merged(set))).length >= rules.minMatches
+    )
+  })
+  if (!fitting.length) return null
+  const set = pick(rand, fitting)
+  const body = joinClauses(shuffle(rand, set).map((f) => f.clause))
+  const sentence = `${body[0].toUpperCase()}${body.slice(1)}.`
+  const text = `${pick(rand, SUGGESTION_OPENERS)} ${sentence} ${pick(rand, SUGGESTION_CLOSERS)}`.trim()
+  return { criteria: merged(set), text, cost: cost(set) }
 }
 
 // ---- generation -----------------------------------------------------------
 
 const TITLE_OPENERS = ['Do you have', 'Holding a copy of', 'Need', 'Can I rent']
 
+// ---- complexity tiers -----------------------------------------------------
+// Every day has ORDERS_PER_DAY orders, each low, medium or high complexity.
+// Days 1 and 2 are all single-title orders; from day 3 each day mixes the
+// tiers (DAY_MIX), and what each tier asks for gets harder in steps
+// (brackets of days, matching DAY_MIX).
+
+export type Tier = 'low' | 'medium' | 'high'
+
+export const ORDERS_PER_DAY = 6
+export const TIERED_DAY = 3
+
+// [first day, low, medium, high] - the last row carries on forever
+const DAY_MIX: [number, number, number, number][] = [
+  [3, 2, 2, 2],
+  [11, 1, 3, 2],
+  [21, 0, 4, 2],
+  [31, 0, 3, 3],
+]
+const bracketOf = (day: number) => {
+  let b = 0
+  DAY_MIX.forEach(([from], i) => day >= from && (b = i))
+  return b
+}
+
+// What a tier can turn out as on a given day: a title order for this many
+// tapes, or a suggestion within these rules
+interface TierRules {
+  // chance of a title order instead of a suggestion
+  titleChance: number
+  titleTapes: number
+  suggestion: SuggestionRules
+}
+
+function tierRules(tier: Tier, day: number): TierRules {
+  const b = bracketOf(day)
+  if (tier === 'low')
+    return {
+      titleChance: 0.5,
+      titleTapes: 1,
+      // "it's got A or B in it", "it's from the 80s", "it's rated Teen"
+      suggestion: { minCost: 1, maxCost: 1, maxFacts: 1, minMatches: 2, allowed: ['eitherActor', 'decade', 'rating'] },
+    }
+  if (tier === 'medium') {
+    const [minCost, maxCost] = ([[2, 3], [3, 4], [3, 5], [4, 5]] as const)[b]
+    return {
+      titleChance: 0.4,
+      titleTapes: 2,
+      suggestion: { minCost, maxCost, maxFacts: 2, minMatches: b === 0 ? 2 : 1, allowed: ALL_FACTS },
+    }
+  }
+  const [minCost, maxCost] = ([[4, 5], [5, 6], [6, 7], [7, 9]] as const)[b]
+  return {
+    // three-tape title orders join the hard ones from the second bracket
+    titleChance: b === 0 ? 0 : 0.25,
+    titleTapes: 3,
+    suggestion: { minCost, maxCost, maxFacts: b === 0 ? 2 : 3, minMatches: 1, allowed: ALL_FACTS },
+  }
+}
+
+const SUGGESTION_REWARD_PER_COST = 2
+const SUGGESTION_SECONDS_PER_COST = 15
+// each extra tape in a title order adds this much time
+const EXTRA_TAPE_SECONDS = 30
+
 // `available` is every tape in the store (on shelves or carried) that no
-// other order is already after. `kind` comes from the day's schedule, and
-// `multiTape` lets title orders ask for two tapes at once.
+// other order is already after; `tier` comes from the day's schedule
 export function generateOrder(
   rand: Rand,
   id: number,
   now: number,
   available: string[],
-  kind: OrderKind,
-  multiTape: boolean,
+  tier: Tier,
+  day: number,
 ): Order | null {
   if (!available.length) return null
   const pool = available.map(tapeById)
-  const rule = ORDER_RULES[kind]
   const targets = shuffle(rand, pool)
+  const rules = day < TIERED_DAY ? null : tierRules(tier, day)
 
-  const count = kind === 'title' && multiTape && pool.length > 1 && rand() < 0.35 ? 2 : 1
-
-  let text = ''
-  let tags: string[] = []
-  const items: OrderItem[] = []
-  if (kind === 'title') {
-    const picks = targets.slice(0, count)
-    for (const t of picks) items.push({ criteria: { title: t.title }, target: t.id, filled: null })
-    const names = picks.map((t) => `"${t.title}"`).join(' and ')
-    text = `${pick(rand, TITLE_OPENERS)} ${names}?`
-  } else if (kind === 'requirements') {
-    const r = requirementCriteria(rand, targets[0])
-    items.push({ criteria: r.criteria, target: targets[0].id, filled: null })
-    tags = r.tags
-    text = pick(rand, REQUEST_OPENERS)
-  } else {
-    const c = clueOrder(rand, targets[0], pool)
-    items.push({ criteria: c.criteria, target: targets[0].id, filled: null })
-    text = c.text
-  }
-
-  const seconds = rule.seconds + (count - 1) * 30
-  return {
+  const make = (kind: OrderKind, text: string, items: OrderItem[], reward: number, seconds: number): Order => ({
     id,
     kind,
     text,
-    tags,
+    tags: [],
     items,
-    reward: rule.reward * count,
+    reward,
     createdAt: now,
     expiresAt: now + seconds,
+  })
+
+  // a suggestion, if the tier rolls one and some tape can carry it
+  if (rules && rand() >= rules.titleChance) {
+    for (const t of targets) {
+      const made = suggestionFor(rand, t, pool, rules.suggestion)
+      if (!made) continue
+      const rule = ORDER_RULES.suggestion
+      return make(
+        'suggestion',
+        made.text,
+        [{ criteria: made.criteria, target: t.id, filled: null }],
+        rule.reward + made.cost * SUGGESTION_REWARD_PER_COST,
+        rule.seconds + made.cost * SUGGESTION_SECONDS_PER_COST,
+      )
+    }
+    // nothing fits today's stock: falls through to a title order
   }
+
+  const count = Math.min(rules?.titleTapes ?? 1, pool.length)
+  const picks = targets.slice(0, count)
+  const names = picks.map((t) => `"${t.title}"`)
+  const list = names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  const rule = ORDER_RULES.title
+  return make(
+    'title',
+    `${pick(rand, TITLE_OPENERS)} ${list}?`,
+    picks.map((t) => ({ criteria: { title: t.title }, target: t.id, filled: null })),
+    rule.reward * count,
+    rule.seconds + (count - 1) * EXTRA_TAPE_SECONDS,
+  )
 }
 
-// What the day's orders will be. 'missing' is a title order for a tape the
-// store doesn't own yet.
-export type ScheduledKind = OrderKind | 'missing'
-
-// Each day has a fixed number of orders and ends once they're all filled or
-// expired. Day 1 is 5 title orders; each day after adds 2 more orders, one
-// more clue and (from day 3) one more requirement order. From day 2, a few
-// title orders ask for tapes you don't have, which is how new stock comes in.
-export const ORDERS_DAY_ONE = 5
-export const ORDERS_PER_DAY_GROWTH = 2
-export const MISSING_PER_DAY = 3
-export function daySchedule(rand: Rand, day: number, unowned: number): ScheduledKind[] {
-  const total = ORDERS_DAY_ONE + ORDERS_PER_DAY_GROWTH * (day - 1)
-  const missing = day >= 2 ? Math.min(MISSING_PER_DAY, unowned) : 0
-  const special = [
-    ...Array<ScheduledKind>(missing).fill('missing'),
-    ...Array<ScheduledKind>(Math.max(0, day - 1)).fill('clue'),
-    ...Array<ScheduledKind>(Math.max(0, day - 2)).fill('requirements'),
-  ].slice(0, total - 1)
-  const titles = Array<ScheduledKind>(total - special.length).fill('title')
-  // Keep a plain title order first so each day eases in
-  return ['title', ...shuffle(rand, [...special, ...titles.slice(1)])]
+// The day's orders, in the order they'll come in. The tiers are dealt into
+// two halves so each half of the day gets its share of easy and hard ones,
+// and the day opens with its easiest order.
+export function daySchedule(rand: Rand, day: number): Tier[] {
+  if (day < TIERED_DAY) return Array<Tier>(ORDERS_PER_DAY).fill('low')
+  const [, low, medium, high] = DAY_MIX[bracketOf(day)]
+  const all: Tier[] = [
+    ...Array<Tier>(low).fill('low'),
+    ...Array<Tier>(medium).fill('medium'),
+    ...Array<Tier>(high).fill('high'),
+  ]
+  const rank = { low: 0, medium: 1, high: 2 }
+  const first = shuffle(rand, all.filter((_, i) => i % 2 === 0))
+  const second = shuffle(rand, all.filter((_, i) => i % 2 === 1))
+  // easiest of the first half leads
+  const lead = first.reduce((best, t, i) => (rank[t] < rank[first[best]] ? i : best), 0)
+  return [first[lead], ...first.filter((_, i) => i !== lead), ...second]
 }

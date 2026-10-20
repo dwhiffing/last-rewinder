@@ -4,6 +4,7 @@ import { CanvasTexture, SRGBColorSpace, type Group } from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GENRE_COLORS, lengthOf, RATING_COLORS, tapeById } from '../../data/tapes'
 import { spineTexture } from './tapeShelf'
+import { sleeveEdgeTexture, sleeveVariant } from './sleeveArt'
 
 // The tape in your hands: a VHS case with the cover art printed on the front
 // and the blurb on the back. Sizes in metres, art drawn at PX pixels per CSS
@@ -75,6 +76,11 @@ function frontArt(tape: Tape, unrewound: boolean) {
   const lineH = 22 * 1.05
   const top = (CARD_H - title.length * lineH) / 2
   title.forEach((l, i) => g.fillText(l, 10, top + i * lineH))
+  // the genre, just above the title
+  g.font = 'bold 11px sans-serif'
+  g.letterSpacing = '2px'
+  g.fillText(tape.genre.toUpperCase(), 10, top - 16)
+  g.letterSpacing = '0px'
 
   // rating badge and year along the foot
   g.font = 'bold 11px sans-serif'
@@ -164,23 +170,28 @@ export function HeldTape({ tapeId, unrewound, flipped }: { tapeId: string; unrew
   const front = useMemo(() => frontArt(tape, unrewound), [tape, unrewound])
   const back = useMemo(() => backArt(tape), [tape])
   const spine = spineTexture(tapeId)
+  // the sleeve's worn card top and bottom
+  const ends = sleeveEdgeTexture(GENRE_COLORS[tape.genre], CASE_SIZE[0], CASE_SIZE[2], sleeveVariant(tapeId))
   useEffect(() => () => front.dispose(), [front])
   useEffect(() => () => back.dispose(), [back])
   useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
     const target = flipped ? Math.PI : 0
-    g.rotation.y += (target - g.rotation.y) * (1 - Math.exp(-10 * dt))
+    // dt clamped: the pile view draws on demand, so frames can be far apart
+    g.rotation.y += (target - g.rotation.y) * (1 - Math.exp(-10 * Math.min(dt, 1 / 30)))
+    // mid-flip its edges swing back by up to half its width; bring it forward
+    // by that much so it doesn't cut through anything held behind it
+    g.position.z = Math.abs(Math.sin(g.rotation.y)) * (CASE_SIZE[0] / 2 + 0.01)
   })
-  const edge = '#151515'
   return (
     <group ref={ref}>
       <mesh geometry={caseGeometry}>
         {/* faces: +x, -x (spines), +y, -y, +z (front cover), -z (back cover) */}
         <meshStandardMaterial attach="material-0" map={spine} roughness={0.6} />
         <meshStandardMaterial attach="material-1" map={spine} roughness={0.6} />
-        <meshStandardMaterial attach="material-2" color={edge} roughness={0.6} />
-        <meshStandardMaterial attach="material-3" color={edge} roughness={0.6} />
+        <meshStandardMaterial attach="material-2" map={ends} roughness={0.85} />
+        <meshStandardMaterial attach="material-3" map={ends} roughness={0.85} />
         <meshStandardMaterial attach="material-4" map={front} roughness={0.5} />
         <meshStandardMaterial attach="material-5" map={back} roughness={0.5} />
       </mesh>

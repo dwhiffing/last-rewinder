@@ -4,6 +4,7 @@ import {
   type Group,
   type Mesh as ThreeMesh,
   type PointLight,
+  type Texture,
   Vector3,
 } from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -28,14 +29,14 @@ import { type RewindSound, startRewindSound } from '../entities/sounds'
 import Carpet from '../entities/store/carpet'
 import { CEILING, glassTexture, NIGHT_SKY, SCUFFS, WALLPAPER, WOOD } from '../entities/store/textures'
 import Label from '../entities/store/label'
-import TapeShelf from '../entities/store/tapeShelf'
+import TapeShelf, { HOVER_PAD, HoverPop, spineTexture, TAPE_SIZE } from '../entities/store/tapeShelf'
 import Standee from '../entities/store/standee'
 import Poster from '../entities/store/poster'
 import Door from '../entities/store/door'
 import RainGlass from '../entities/store/rainGlass'
 import Rainfall from '../entities/store/rainfall'
 import { Mesh } from '../shared/traits'
-import { itemColor } from '../data/snacks'
+import { itemColor, itemName } from '../data/snacks'
 import { GENRE_COLORS, tapeById } from '../data/tapes'
 import useGameStore from '../stores/gameStore'
 import SegmentDisplay from '../entities/store/segmentDisplay'
@@ -92,13 +93,15 @@ const FRONT_WALL_PIECES: [number, number, number, number][] = [
 
 const RETURN_DESK_H = 0.84
 const MONITOR_DEPTH = 0.22
-const LIGHT_INTENSITY = 1.25
+const LIGHT_INTENSITY = 0.768 // 1.25, darkened 15% three times
 // Panels (by grid fraction) whose tubes are dead, and one on its way out
 const DEAD_LIGHTS = ['0.625,0.375', '0.125,0.875', '0.875,0.125', '0.375,0.125']
 const FLICKER_LIGHTS = ['0.375,0.625']
-// Point-light shadows are costly, so only a few working lights cast them:
-// over the counter, the return box and the middle of the shelves
-const SHADOW_LIGHTS = ['0.125,0.125', '0.875,0.375', '0.375,0.375', '0.625,0.625']
+// Point-light shadows are costly (each is six extra renders of the store), so
+// only one working light casts them, over the middle of the shelves. Others
+// that could: '0.125,0.125' (counter), '0.875,0.375' (return box),
+// '0.375,0.375' (front of the shelves)
+const SHADOW_LIGHTS = ['0.625,0.625']
 
 // Shadows only change when something moves, so the shadow maps are redrawn
 // only then (and a few times while the scene and textures settle on load)
@@ -363,8 +366,9 @@ export function Store({ hideCeiling = false }: { hideCeiling?: boolean }) {
       <group name="dropBin" userData={{ label: 'Return box' }}>
         <Block size={[0.6, RETURN_DESK_H, 0.6]} position={[bx, RETURN_DESK_H / 2, bz]} color={TRIM_COLOR} textures={SCUFFS} />
         <TableTop width={0.6} depth={0.6} position={[bx, RETURN_DESK_H, bz]} />
-        <ReturnBoxTapes position={[bx, RETURN_DESK_H + TOP_H, bz]} />
       </group>
+      {/* each returned tape can be picked out on its own, like off a shelf */}
+      <ReturnBoxTapes position={[bx, RETURN_DESK_H + TOP_H, bz]} />
       <Label
         text="RETURNS"
         marquee
@@ -450,22 +454,72 @@ function Computer({ position }: { position: [number, number, number] }) {
   )
 }
 
-// Tapes waiting in the return box, piled flat on top so you can see how many
+// Tapes waiting in the return box: smaller copies of the shelf tapes lying
+// flat in two piles, spines out toward the spot you stand at to use it. The
+// box is against the right-hand wall, so that's its -x side.
+const RETURN_TAPE_SCALE = 0.21 / TAPE_SIZE[1]
+// lying flat: depth along x, spine width as the thickness, length along z
+const RETURN_TAPE_SIZE: [number, number, number] = [
+  TAPE_SIZE[2] * RETURN_TAPE_SCALE,
+  TAPE_SIZE[0] * RETURN_TAPE_SCALE,
+  TAPE_SIZE[1] * RETURN_TAPE_SCALE,
+]
+// the spine art runs up the tape; turned so it reads left to right on its side
+const returnSpines = new Map<string, Texture>()
+function returnSpine(id: string) {
+  let tex = returnSpines.get(id)
+  if (!tex) {
+    tex = spineTexture(id).clone()
+    tex.center.set(0.5, 0.5)
+    tex.rotation = -Math.PI / 2
+    returnSpines.set(id, tex)
+  }
+  return tex
+}
 function ReturnBoxTapes({ position }: { position: [number, number, number] }) {
   const box = useGameStore((s) => s.returnBox)
-  const [x, y, z] = position
+  const hoveredId = useGameStore((s) =>
+    s.hovered?.kind === 'returnTape' && s.hovered.popOut !== false ? s.hovered.returnId : null,
+  )
+  const [depth, thick, length] = RETURN_TAPE_SIZE
+  // Laid out in a frame turned so its +z points at you (the world's -x) and
+  // its +x runs along the world's +z: the hover animation slides an item out
+  // along +z, so a tape slides out of the pile toward you
+  const size: [number, number, number] = [length, thick, depth]
   return (
-    <>
-      {box.map((id, i) => (
-        <Block
-          key={id}
-          size={[0.21, 0.035, 0.13]}
-          position={[x + ((i % 2) - 0.5) * 0.24, y + 0.018 + Math.floor(i / 2) * 0.036, z + ((i % 3) - 1) * 0.04]}
-          color={itemColor(id, (g) => GENRE_COLORS[g as keyof typeof GENRE_COLORS])}
-          castShadow={false}
-        />
-      ))}
-    </>
+    <group position={position} rotation={[0, -Math.PI / 2, 0]}>
+      {box.map((id, i) => {
+        const color = itemColor(id, (g) => GENRE_COLORS[g as keyof typeof GENRE_COLORS])
+        // two piles side by side, a little ragged front to back
+        const center: [number, number, number] = [
+          ((i % 2) - 0.5) * (length + 0.02),
+          thick / 2 + Math.floor(i / 2) * (thick + 0.001),
+          -((i % 3) - 1) * 0.012,
+        ]
+        return (
+          <group key={id} name="returnTape" userData={{ label: itemName(id), returnId: id }}>
+            {/* its shape at rest, for hover and clicks */}
+            <mesh position={center} userData={{ hoverProxy: true }}>
+              <boxGeometry args={[size[0] + HOVER_PAD * 2, size[1] + HOVER_PAD * 2, size[2] + HOVER_PAD * 2]} />
+              <meshBasicMaterial visible={false} />
+            </mesh>
+            <HoverPop hovered={hoveredId === id} depth={depth} center={center}>
+              <mesh position={center} receiveShadow>
+                <boxGeometry args={size} />
+                {/* box faces are +x, -x, +y, -y, +z (the spine, toward you), -z */}
+                {[0, 1, 2, 3, 4, 5].map((face) =>
+                  face === 4 ? (
+                    <meshStandardMaterial key={face} attach={`material-${face}`} map={returnSpine(id)} roughness={0.6} />
+                  ) : (
+                    <meshStandardMaterial key={face} attach={`material-${face}`} color={color} roughness={0.6} />
+                  ),
+                )}
+              </mesh>
+            </HoverPop>
+          </group>
+        )
+      })}
+    </group>
   )
 }
 
@@ -481,8 +535,9 @@ const _listener = new Vector3()
 const _source = new Vector3()
 function TapeRewinder({ position }: { position: [number, number, number] }) {
   const rewinder = useGameStore((s) => s.rewinder)
+  // silent while the power's out (the rewind is paused)
   const rewindingUntil = useGameStore((s) =>
-    s.rewinder && s.rewinder.doneAt > s.time ? s.rewinder.doneAt : null,
+    s.rewinder && s.rewinder.doneAt > s.time && !s.powerOut ? s.rewinder.doneAt : null,
   )
   const sound = useRef<RewindSound | null>(null)
   useEffect(() => {
@@ -525,17 +580,17 @@ function TapeRewinder({ position }: { position: [number, number, number] }) {
           castShadow={false}
         />
       )}
-      <pointLight position={[x - 0.035, y + 0.03, z + 0.18]} color="#3cff3c" intensity={powerOut ? 0.04 : 0} distance={0.6} decay={2} />
       {/* status readout along the bottom of the front */}
       <SegmentDisplay
         text={!rewinder ? 'INSERT TAPE' : done ? 'DONE' : 'REWINDING'}
         position={[x - 0.035, y + 0.018, z + 0.1205]}
         width={0.27}
-        visible={blinkOn}
+        // dark while the power's out
+        visible={blinkOn && !powerOut}
       />
       <mesh position={[x + 0.16, y + 0.05, z + 0.121]}>
         <boxGeometry args={[0.03, 0.03, 0.005]} />
-        <meshBasicMaterial color={!rewinder ? '#333' : done ? '#3cff3c' : '#ff3030'} toneMapped={false} />
+        <meshBasicMaterial color={!rewinder || powerOut ? '#333' : done ? '#3cff3c' : '#ff3030'} toneMapped={false} />
       </mesh>
     </group>
   )

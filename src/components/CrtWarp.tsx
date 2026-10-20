@@ -7,11 +7,12 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import useGameStore from '../stores/gameStore'
 
 // Bulges the picture like the curved glass of a tube TV and darkens toward
-// the edges; anything pushed past the edge of the glass goes black
+// the edges; anything pushed past the edge of the glass goes black, and the
+// picture's corners are rounded off like the tube's
 const BarrelShader = {
   uniforms: {
     tDiffuse: { value: null },
-    strength: { value: 0.1 },
+    strength: { value: 0.05 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -34,7 +35,11 @@ const BarrelShader = {
       }
       vec4 color = texture2D(tDiffuse, uv);
       float shade = 1.0 - 0.35 * pow(length(c) / 1.414, 3.0);
-      gl_FragColor = vec4(color.rgb * shade, color.a);
+      // corner radius as a fraction of width and height (round on a 16:9 screen)
+      vec2 radius = vec2(0.035, 0.062);
+      vec2 q = (abs(uv - 0.5) - (0.5 - radius)) / radius;
+      float corner = 1.0 - smoothstep(0.92, 1.0, length(max(q, 0.0)));
+      gl_FragColor = vec4(color.rgb * shade * corner, color.a);
     }
   `,
 }

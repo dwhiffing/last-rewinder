@@ -45,7 +45,7 @@ export const GENRE_COLORS: Record<Genre, string> = {
 
 const TITLES: Record<Genre, string[]> = {
   Action: [
-    'Die Harder Still',
+    'Die Hardware',
     'Lethal Paperwork',
     'Road Rage Warrior',
     'Speed Bump',
@@ -75,8 +75,8 @@ const TITLES: Record<Genre, string[]> = {
     'Ghost Plumbers',
     'Weekend at Bernards',
     'Hot Tub Tax Audit',
-    'Uncle Buck Jr.',
-    'Mall Cops 3',
+    'Uncle Buckaroo',
+    'Mall Cops',
     'Wedding Crushers',
     'Big Trouble',
     'Late Fee',
@@ -130,7 +130,7 @@ const TITLES: Record<Genre, string[]> = {
     'The Basement',
     'Scream Queen',
     'It Came From Aisle 3',
-    'Return of the Rewinder',
+    'The Rewinder',
     'Do Not Open',
     'Evil Dad',
     'Static',
@@ -157,9 +157,9 @@ const TITLES: Record<Genre, string[]> = {
     'Mars Mall',
     'Beyond the VHS',
     'Laser Planet',
-    'Tron Again',
+    'Neon Grid Runner',
     'The Last Signal',
-    'Alien Returns',
+    'Aliens Ate My VCR',
     'Cyber Cop 2099',
     'Orbit Station Zero',
     'The Clone Shift',
@@ -228,13 +228,15 @@ const ACTORS: [string, Genre[]][] = [
   ['Rosie Tran', ['Family', 'Sci-Fi']],
 ]
 
+// X is never rolled here: exactly X_SHARE of the catalogue is picked to be X
+// once all the tapes exist (see below)
 const RATING_WEIGHTS: Record<Genre, [Rating, number][]> = {
-  Action: [['Teen', 3], ['Mature', 5], ['X', 1]],
-  Comedy: [['Kids', 1], ['Teen', 5], ['Mature', 3], ['X', 1]],
-  Drama: [['Teen', 4], ['Mature', 5], ['X', 1]],
-  Horror: [['Teen', 2], ['Mature', 5], ['X', 3]],
-  'Sci-Fi': [['Kids', 1], ['Teen', 5], ['Mature', 3], ['X', 1]],
-  Family: [['Kids', 8], ['Teen', 2]],
+  Action: [['Teen', 3], ['Mature', 5]],
+  Comedy: [['Kids', 1], ['Teen', 5], ['Mature', 3]],
+  Drama: [['Teen', 4], ['Mature', 5]],
+  Horror: [['Teen', 2], ['Mature', 5]],
+  'Sci-Fi': [['Kids', 1], ['Teen', 5], ['Mature', 3]],
+  Family: [['Kids', 1]],
 }
 
 const DECADE_START: Record<Decade, number> = { '70s': 1970, '80s': 1980, '90s': 1990 }
@@ -350,6 +352,16 @@ export const TAPES: Tape[] = GENRES.flatMap((genre) =>
     }
   }),
 )
+
+// Exactly this share of the catalogue is rated X, picked from every genre but
+// Family (the same films every game)
+const X_SHARE = 0.05
+for (const tape of shuffle(
+  mulberry32(1986),
+  TAPES.filter((t) => t.genre !== 'Family'),
+).slice(0, Math.round(TAPES.length * X_SHARE))) {
+  tape.rating = 'X'
+}
 
 const TAPE_INDEX = new Map(TAPES.map((t) => [t.id, t]))
 export const tapeById = (id: string) => TAPE_INDEX.get(id)!

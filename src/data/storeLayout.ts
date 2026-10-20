@@ -1,4 +1,5 @@
 import { isWide } from './snacks'
+import { type Genre } from './tapes'
 // All units are metres. x runs left/right, z runs from the store front (-z)
 // to the back wall (+z). Players move between fixed nodes and can only face
 // the four cardinal directions.
@@ -6,7 +7,7 @@ import { isWide } from './snacks'
 export const STORE_HEIGHT = 2.6
 export const BACK_Z = 4
 
-export const EYE_HEIGHT = 1.5
+export const EYE_HEIGHT = 1.656
 
 export const SHELF_WIDTH = 1.6
 // Tall shelves: the top sits about a foot below the ceiling
@@ -78,6 +79,26 @@ export const SHELVES: {
   { id: 'I', position: [cornerX, 0, frontFacingRowZ], rotationY: Math.PI },
 ]
 
+// The genre each shelf is for: the starting tapes are put out on their own
+// genre's shelf, and its sign says so. G, H and I have no genre (H and I's
+// middle tiers hold the snacks).
+export const SHELF_GENRES: Partial<Record<string, Genre>> = {
+  A: 'Action',
+  B: 'Comedy',
+  C: 'Drama',
+  D: 'Horror',
+  E: 'Sci-Fi',
+  F: 'Family',
+}
+
+// What each shelf's sign says: its genre, or what the genreless ones are for
+export const SHELF_SIGNS: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(SHELF_GENRES).map(([id, genre]) => [id, genre!.toUpperCase()])),
+  G: 'MISC',
+  H: 'SNACKS',
+  I: 'SNACKS',
+}
+
 // Floor footprint of a shelf, for keeping walking routes clear of it
 function shelfFootprint({ position: [x, , z], rotationY }: (typeof SHELVES)[number]) {
   const sideways = Math.abs(Math.sin(rotationY)) > 0.5
@@ -119,8 +140,8 @@ export const coveringSlot = (slots: Record<string, string | null>, id: string) =
   return left && isWide(slots[left]) ? left : null
 }
 
-// The bottom tier is a blank kick panel, so slots start one tier up
-export const FIRST_TIER = 1
+// The bottom two tiers are behind a blank kick panel, so slots start two up
+export const FIRST_TIER = 2
 
 export const ALL_SLOT_IDS = SHELVES.flatMap(({ id }) =>
   Array.from({ length: (SHELF_TIERS - FIRST_TIER) * SLOTS_PER_TIER }, (_, i) =>

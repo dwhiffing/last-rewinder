@@ -1,3 +1,6 @@
+import '@fontsource/asap-sharp/400.css'
+import '@fontsource/asap-sharp/600.css'
+import '@fontsource/asap-sharp/700.css'
 import '@fontsource/permanent-marker'
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
