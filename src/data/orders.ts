@@ -69,32 +69,23 @@ export function matches(tape: Tape, c: Criteria) {
 
 // ---- suggestion orders ----------------------------------------------------
 // A customer describes what they're after from a few facts about one tape in
-// the store, and any tape fitting all of them will do. Each kind of fact
-// costs difficulty points, by how hard it is to check: the shelf signs give
-// away the genre, the front cover shows actors, year and rating, and length is
-// only on the back. How many points an order may cost, how many facts it may
-// use and how many tapes in the store must fit come from its tier (see
-// TIERS below).
+// the store, and any tape fitting all of them will do. Difficulty is the
+// share of the store's current stock that ends up fitting: a tier's
+// minPercent/maxPercent picks out which fact combinations count as "hard
+// enough" for it, so difficulty tracks the real odds of finding a match
+// instead of an arbitrary per-fact cost, and it scales automatically as the
+// store's stock grows. The shelf signs give away the genre, the front cover
+// shows actors, year and rating, and length is only on the back.
 
 type FactKey = 'genre' | 'eitherActor' | 'actor' | 'decade' | 'year' | 'rating' | 'length'
 
-const FACT_COST: Record<FactKey, number> = {
-  genre: 0,
-  eitherActor: 1,
-  actor: 2,
-  decade: 1,
-  rating: 1,
-  year: 3,
-  length: 3,
-}
-const ALL_FACTS = Object.keys(FACT_COST) as FactKey[]
+const ALL_FACTS: FactKey[] = ['genre', 'eitherActor', 'actor', 'decade', 'year', 'rating', 'length']
 
 interface SuggestionRules {
-  minCost: number
-  maxCost: number
+  // share of the pool (0-1) that must fit for a fact combination to count
+  minPercent: number
+  maxPercent: number
   maxFacts: number
-  // tapes in the store that must fit, so it isn't a needle in a haystack
-  minMatches: number
   allowed: FactKey[]
 }
 interface Fact {
@@ -217,23 +208,18 @@ function joinClauses(clauses: string[]) {
 // Builds a suggestion around `tape` within the rules; null if no set of
 // facts about it fits them (another tape is tried)
 function suggestionFor(rand: Rand, tape: Tape, pool: Tape[], rules: SuggestionRules) {
-  const cost = (set: Fact[]) => set.reduce((sum, f) => sum + FACT_COST[f.key], 0)
   const merged = (set: Fact[]) => Object.assign({}, ...set.map((f) => f.criteria)) as Criteria
   const facts = factsAbout(rand, tape).filter((f) => rules.allowed.includes(f.key))
   const fitting = factSets(facts, rules.maxFacts).filter((set) => {
-    const c = cost(set)
-    return (
-      c >= rules.minCost &&
-      c <= rules.maxCost &&
-      pool.filter((t) => matches(t, merged(set))).length >= rules.minMatches
-    )
+    const share = pool.filter((t) => matches(t, merged(set))).length / pool.length
+    return share >= rules.minPercent && share <= rules.maxPercent
   })
   if (!fitting.length) return null
   const set = pick(rand, fitting)
   const body = joinClauses(shuffle(rand, set).map((f) => f.clause))
   const sentence = `${body[0].toUpperCase()}${body.slice(1)}.`
   const text = `${pick(rand, SUGGESTION_OPENERS)} ${sentence} ${pick(rand, SUGGESTION_CLOSERS)}`.trim()
-  return { criteria: merged(set), text, cost: cost(set) }
+  return { criteria: merged(set), text }
 }
 
 // ---- generation -----------------------------------------------------------
@@ -251,9 +237,12 @@ export type Tier = 'low' | 'medium' | 'high'
 export const ORDERS_PER_DAY = 6
 export const TIERED_DAY = 3
 
-// [first day, low, medium, high] - the last row carries on forever
+// [first day, low, medium, high] - the last row carries on forever.
+// High tier doesn't show up until day 5; medium and high both ramp up
+// gradually from there.
 const DAY_MIX: [number, number, number, number][] = [
-  [3, 2, 2, 2],
+  [3, 5, 1, 0],
+  [5, 3, 2, 1],
   [11, 1, 3, 2],
   [21, 0, 4, 2],
   [31, 0, 3, 3],
@@ -264,6 +253,16 @@ const bracketOf = (day: number) => {
   return b
 }
 
+// Days 3-10 (the two easiest brackets) ramp the number of suggestion orders
+// up by one per day instead of leaving it to each tier's dice roll, so the
+// first one never spikes by chance. Day 11 is when the next bracket's own
+// tier mix (more medium/high, see DAY_MIX) settles into roughly this many
+// suggestions on its own, so the ramp hands off to it there.
+const SUGGESTION_RAMP_UNTIL_DAY = 11
+const SUGGESTION_RAMP_CAP = 4
+const suggestionRampCount = (day: number) =>
+  Math.min(SUGGESTION_RAMP_CAP, day - (TIERED_DAY - 1))
+
 // What a tier can turn out as on a given day: a title order for this many
 // tapes, or a suggestion within these rules
 interface TierRules {
@@ -273,39 +272,64 @@ interface TierRules {
   suggestion: SuggestionRules
 }
 
+// some facts don't show up in suggestions until the player's had time to
+// notice them: decade takes a few days to sink in, an exact year is a much
+// finer reading of the same cover detail so it waits longer, and length is
+// only on the back of the box, easy to miss early on
+const FACT_UNLOCK_DAY: Partial<Record<FactKey, number>> = {
+  decade: 6,
+  year: 15,
+  length: 12,
+}
+const factsFor = (day: number, pool: FactKey[] = ALL_FACTS) =>
+  pool.filter((f) => day >= (FACT_UNLOCK_DAY[f] ?? 0))
+
 function tierRules(tier: Tier, day: number): TierRules {
   const b = bracketOf(day)
   if (tier === 'low')
     return {
       titleChance: 0.5,
       titleTapes: 1,
-      // "it's got A or B in it", "it's from the 80s", "it's rated Teen"
-      suggestion: { minCost: 1, maxCost: 1, maxFacts: 1, minMatches: 2, allowed: ['eitherActor', 'decade', 'rating'] },
+      // "it's got A or B in it", "it's from the 80s", "it's rated Teen" -
+      // easy to find: at least a fifth of the stock fits
+      suggestion: {
+        minPercent: 0.2,
+        maxPercent: 1,
+        maxFacts: 1,
+        allowed: factsFor(day, ['eitherActor', 'decade', 'rating']),
+      },
     }
-  if (tier === 'medium') {
-    const [minCost, maxCost] = ([[2, 3], [3, 4], [3, 5], [4, 5]] as const)[b]
+  if (tier === 'medium')
     return {
       titleChance: 0.4,
       titleTapes: 2,
-      suggestion: { minCost, maxCost, maxFacts: 2, minMatches: b === 0 ? 2 : 1, allowed: ALL_FACTS },
+      // solvable by roughly 1 in 7 tapes on the shelf (~15%)
+      suggestion: { minPercent: 0.1, maxPercent: 0.2, maxFacts: 2, allowed: factsFor(day) },
     }
-  }
-  const [minCost, maxCost] = ([[4, 5], [5, 6], [6, 7], [7, 9]] as const)[b]
   return {
-    // three-tape title orders join the hard ones from the second bracket
-    titleChance: b === 0 ? 0 : 0.25,
+    // high first shows up on day 5 as suggestion-only; title chance opens up
+    // once it's been around a bracket
+    titleChance: b <= 1 ? 0 : 0.25,
     titleTapes: 3,
-    suggestion: { minCost, maxCost, maxFacts: b === 0 ? 2 : 3, minMatches: 1, allowed: ALL_FACTS },
+    // solvable by roughly 1 in 14 tapes on the shelf (~7%)
+    suggestion: { minPercent: 0.04, maxPercent: 0.1, maxFacts: b <= 1 ? 2 : 3, allowed: factsFor(day) },
   }
 }
 
-const SUGGESTION_REWARD_PER_COST = 2
-const SUGGESTION_SECONDS_PER_COST = 15
+// extra reward/time for a suggestion, on top of ORDER_RULES.suggestion's
+// base, scaled to how rare a match the tier asks for
+const SUGGESTION_BONUS: Record<Tier, { reward: number; seconds: number }> = {
+  low: { reward: 2, seconds: 15 },
+  medium: { reward: 6, seconds: 45 },
+  high: { reward: 12, seconds: 90 },
+}
 // each extra tape in a title order adds this much time
 const EXTRA_TAPE_SECONDS = 30
 
 // `available` is every tape in the store (on shelves or carried) that no
-// other order is already after; `tier` comes from the day's schedule
+// other order is already after; `tier` comes from the day's schedule.
+// `forceKind`, when given, skips the tier's title/suggestion dice roll (see
+// the suggestion ramp in daySchedule)
 export function generateOrder(
   rand: Rand,
   id: number,
@@ -313,6 +337,7 @@ export function generateOrder(
   available: string[],
   tier: Tier,
   day: number,
+  forceKind?: OrderKind,
 ): Order | null {
   if (!available.length) return null
   const pool = available.map(tapeById)
@@ -330,18 +355,20 @@ export function generateOrder(
     expiresAt: now + seconds,
   })
 
-  // a suggestion, if the tier rolls one and some tape can carry it
-  if (rules && rand() >= rules.titleChance) {
+  const wantsSuggestion = forceKind ? forceKind === 'suggestion' : !!rules && rand() >= rules.titleChance
+  // a suggestion, if one was rolled (or forced) and some tape can carry it
+  if (rules && wantsSuggestion) {
     for (const t of targets) {
       const made = suggestionFor(rand, t, pool, rules.suggestion)
       if (!made) continue
       const rule = ORDER_RULES.suggestion
+      const bonus = SUGGESTION_BONUS[tier]
       return make(
         'suggestion',
         made.text,
         [{ criteria: made.criteria, target: t.id, filled: null }],
-        rule.reward + made.cost * SUGGESTION_REWARD_PER_COST,
-        rule.seconds + made.cost * SUGGESTION_SECONDS_PER_COST,
+        rule.reward + bonus.reward,
+        rule.seconds + bonus.seconds,
       )
     }
     // nothing fits today's stock: falls through to a title order
@@ -361,11 +388,18 @@ export function generateOrder(
   )
 }
 
+export interface ScheduleSlot {
+  tier: Tier
+  // bypasses the tier's own title/suggestion dice roll when set (the
+  // suggestion ramp below)
+  forceKind?: OrderKind
+}
+
 // The day's orders, in the order they'll come in. The tiers are dealt into
 // two halves so each half of the day gets its share of easy and hard ones,
 // and the day opens with its easiest order.
-export function daySchedule(rand: Rand, day: number): Tier[] {
-  if (day < TIERED_DAY) return Array<Tier>(ORDERS_PER_DAY).fill('low')
+export function daySchedule(rand: Rand, day: number): ScheduleSlot[] {
+  if (day < TIERED_DAY) return Array<Tier>(ORDERS_PER_DAY).fill('low').map((tier) => ({ tier }))
   const [, low, medium, high] = DAY_MIX[bracketOf(day)]
   const all: Tier[] = [
     ...Array<Tier>(low).fill('low'),
@@ -377,5 +411,18 @@ export function daySchedule(rand: Rand, day: number): Tier[] {
   const second = shuffle(rand, all.filter((_, i) => i % 2 === 1))
   // easiest of the first half leads
   const lead = first.reduce((best, t, i) => (rank[t] < rank[first[best]] ? i : best), 0)
-  return [first[lead], ...first.filter((_, i) => i !== lead), ...second]
+  const tiers = [first[lead], ...first.filter((_, i) => i !== lead), ...second]
+  const slots: ScheduleSlot[] = tiers.map((tier) => ({ tier }))
+  if (day < SUGGESTION_RAMP_UNTIL_DAY) {
+    // force the hardest slots to be suggestions first, up to today's count,
+    // and everything else to a title order
+    const target = Math.min(suggestionRampCount(day), slots.length)
+    const byHardest = slots
+      .map((_, i) => i)
+      .sort((a, b) => rank[tiers[b]] - rank[tiers[a]])
+    byHardest.forEach((i, rankIdx) => {
+      slots[i].forceKind = rankIdx < target ? 'suggestion' : 'title'
+    })
+  }
+  return slots
 }

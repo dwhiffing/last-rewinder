@@ -67,7 +67,7 @@ function ShaderWarmup() {
 export function Game() {
   // The VHS/CRT filter already hides fine detail, so there's nothing to gain
   // from rendering above native resolution
-  const dpr = 0.6
+  const dpr = 1
   return (
     <div className="game">
       {/* The post-processing pass renders into its own (non-multisampled)
@@ -312,6 +312,8 @@ function OrderText({ text }: { text: string }) {
 
 function OrderCard({ order, time }: { order: Order; time: number }) {
   const fill = useGameStore((s) => s.fillOrder)
+  const dismiss = useGameStore((s) => s.dismissOrder)
+  const debugFill = useGameStore((s) => s.debugFillOrder)
   const day = useGameStore((s) => s.day)
   // lit up when you're holding everything it needs, so one click sends it
   const ready = useGameStore(
@@ -354,6 +356,26 @@ function OrderCard({ order, time }: { order: Order; time: number }) {
         />
       </div>
       <div className="order-foot">
+        <button
+          type="button"
+          className="order-dismiss"
+          onClick={(e) => {
+            e.stopPropagation()
+            dismiss(order.id)
+          }}>
+          Dismiss
+        </button>
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            className="order-debug-fill"
+            onClick={(e) => {
+              e.stopPropagation()
+              debugFill(order.id)
+            }}>
+            [debug] Auto-fill
+          </button>
+        )}
         <span className="order-time">{formatTime(left)} left</span>
       </div>
     </div>
@@ -448,10 +470,6 @@ function SnackShop() {
             key={type}
             disabled={money < SNACKS[type].cost}
             onClick={() => buy(type)}>
-            <span
-              className="swatch"
-              style={{ background: SNACKS[type].color }}
-            />
             {type}
             <span className="snack-cost">${SNACKS[type].cost}</span>
           </button>
@@ -839,12 +857,16 @@ function DebugButtons() {
   const vhsOn = useGameStore((s) => s.vhsOn)
   // switch suspects off to see what they cost (see PerfStats)
   const [filterOn, setFilterOn] = useState(true)
+  const [perfOn, setPerfOn] = useState(false)
   useEffect(() => {
     document.querySelector('.game')?.classList.toggle('no-filter', !filterOn)
   }, [filterOn])
   return (
     <div className="debug-buttons">
-      <PerfPanel />
+      {perfOn && <PerfPanel />}
+      <button onClick={() => setPerfOn(!perfOn)}>
+        Perf monitor: {perfOn ? 'on' : 'off'}
+      </button>
       <button onClick={() => setFilterOn(!filterOn)}>
         CSS filter: {filterOn ? 'on' : 'off'}
       </button>

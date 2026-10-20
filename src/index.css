@@ -420,7 +420,7 @@ body {
 .tape-card-hint {
   margin-top: 6px;
   font-size: 18px;
-  font-weight: bold;;
+  font-weight: bold;
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.7;
@@ -558,8 +558,31 @@ body {
 .order-foot {
   gap: 8px;
 }
-.order-foot .order-time {
-  margin-right: auto;
+.order-dismiss {
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 107, 107, 0.6);
+  border-radius: 4px;
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff6b6b;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.order-dismiss:hover {
+  background: rgba(255, 107, 107, 0.25);
+}
+.order-debug-fill {
+  padding: 2px 8px;
+  border: 1px dashed #ffd400;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd400;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.order-debug-fill:hover {
+  background: rgba(255, 212, 0, 0.2);
 }
 .snack-shop {
   margin-top: 16px;
@@ -587,11 +610,6 @@ body {
 .snack-list button:disabled {
   opacity: 0.4;
   cursor: default;
-}
-.snack-list .swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
 }
 .snack-cost {
   margin-left: auto;

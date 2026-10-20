@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { ALL_SLOT_IDS, SHELF_GENRES, SLOTS_PER_TIER, coveringSlot, neighbourSlot, slotId } from '../data/storeLayout'
-import { daySchedule, generateOrder, matches, type Order, type Tier } from '../data/orders'
+import { daySchedule, generateOrder, matches, type Order, type ScheduleSlot } from '../data/orders'
 import { mulberry32, shuffle } from '../data/random'
 import { shakeDoor } from '../entities/store/door'
 import { isSnack, isWide, itemName, setNamesHidden, SNACK_TYPES, type SnackType, snackId, snackOf, SNACKS } from '../data/snacks'
@@ -38,8 +38,8 @@ const ORDER_GAP: [number, number] = [12, 20]
 // proportionally longer: their base time from orders.ts is scaled by the same
 // factor that takes a plain order's BASE_ORDER_SECONDS to the day's time.
 const ORDER_SECONDS_START = 90
-const ORDER_SECONDS_STEP = 5
-const ORDER_SECONDS_EVERY = 2
+const ORDER_SECONDS_STEP = 3
+const ORDER_SECONDS_EVERY = 1
 const MIN_ORDER_SECONDS = 30
 const BASE_ORDER_SECONDS = 60
 const plainOrderSeconds = (day: number) =>
@@ -148,7 +148,7 @@ export interface GameState {
   rewinder: Rewinder | null
   rented: { tapeId: string; returnDay: number }[]
   // the rest of today's orders; the day ends once these and the open ones are done
-  schedule: Tier[]
+  schedule: ScheduleSlot[]
   // next id number for a snack item
   nextSnackId: number
   // snacks bought today, put out on the snack shelves tomorrow morning
@@ -173,10 +173,12 @@ export interface GameState {
   useRewinder: () => void
   tick: (delta: number) => void
   fillOrder: (orderId: number) => void
+  dismissOrder: (orderId: number) => void
   buySnack: (type: SnackType) => void
   debugSkipDay: () => void
   debugAddMoney: () => void
   debugAddReturn: () => void
+  debugFillOrder: (orderId: number) => void
   startNextDay: () => void
   setComputerOpen: (open: boolean) => void
   flipCover: () => void
@@ -637,14 +639,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const spawnOrder = () => {
       if (orders.length >= MAX_ORDERS || !schedule.length) return
       {
-        const kind = schedule[0]
+        const slot = schedule[0]
         const order = generateOrder(
           orderRand,
           nextOrderId,
           time,
           availableTapes({ ...s, orders }),
-          kind,
+          slot.tier,
           s.day,
+          slot.forceKind,
         )
         // An order that can't be made (nothing left to ask for) is skipped
         schedule = schedule.slice(1)
@@ -753,6 +756,67 @@ export const useGameStore = create<GameState>((set, get) => ({
         text: `Order sent! +${formatMoney(pay)}`,
         at: performance.now(),
       },
+    })
+  },
+  // Gives up on an order early instead of waiting for it to expire; costs
+  // the same as letting it run out (counts as missed, any attached items go
+  // to the return box)
+  dismissOrder: (orderId) => {
+    const s = get()
+    const order = s.orders.find((o) => o.id === orderId)
+    if (!order) return
+    const back = attachedItems([order])
+    playFail()
+    set({
+      orders: s.orders.filter((o) => o.id !== orderId),
+      returnBox: back.length ? [...s.returnBox, ...back] : s.returnBox,
+      today: { ...s.today, missed: s.today.missed + 1 },
+      message: { text: 'Order dismissed', at: performance.now() },
+    })
+  },
+  // Dev shortcut: sends the given order using tapes/snacks from the shelves
+  // or the return box. Rewinding is skipped (any tape used is auto-rewound);
+  // a snack it needs is used if one's on hand, or conjured for free if not -
+  // this is a debug tool, not a real purchase
+  debugFillOrder: (orderId) => {
+    const s = get()
+    const order = s.orders.find((o) => o.id === orderId)
+    if (!order) return
+    const onShelves = Object.values(s.slots).filter(Boolean) as string[]
+    const pool = [...onShelves, ...s.returnBox]
+    const picks = orderPicks({ ...order, snack: undefined }, pool, s.needsRewind, true)
+    if (!picks) {
+      s.showMessage('[debug] Nothing on the shelves or in the return box fills that order')
+      return
+    }
+    const foundSnacks = order.snack ? snacksFor(order, pool) : []
+    const used = [...picks.tapes, ...foundSnacks]
+    const slots = { ...s.slots }
+    let returnBox = s.returnBox
+    for (const id of used) {
+      const slotId = Object.keys(slots).find((k) => slots[k] === id)
+      if (slotId) slots[slotId] = null
+      else returnBox = returnBox.filter((x) => x !== id)
+    }
+    const rewoundIds = picks.tapes.filter((id) => s.needsRewind[id])
+    const needsRewind = rewoundIds.length
+      ? Object.fromEntries(Object.entries(s.needsRewind).filter(([id]) => !rewoundIds.includes(id)))
+      : s.needsRewind
+    const pay = order.reward
+    const rented = [
+      ...s.rented,
+      ...picks.tapes.map((tapeId) => ({ tapeId, returnDay: s.day + rentalDays() })),
+    ]
+    set({
+      slots,
+      returnBox,
+      needsRewind,
+      rented,
+      orders: s.orders.filter((o) => o.id !== orderId),
+      money: s.money + pay,
+      ordersFilled: s.ordersFilled + 1,
+      today: { ...s.today, filled: s.today.filled + 1, earned: s.today.earned + pay },
+      message: { text: `[debug] Order auto-filled: +${formatMoney(pay)}`, at: performance.now() },
     })
   },
   // Restocking snacks: paid now, delivered straight to the return box
